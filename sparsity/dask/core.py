@@ -78,16 +78,12 @@ class SparseFrame(dask.base.Base):
         meta = self._meta.assign(**{k: v._meta for k, v in kwargs.items()})
         name = 'assign-' + tokenize(self.assign, self, kwargs)
 
-        # set other parameters
-        other = list(enumerate(kwargs.keys(), start=1))
-        # All dask objects
+        # All dask objects and their keys
         dasks = [self] + list(kwargs.values())
-        # Their keys (dask graph)
         keys = [d._keys() for d in dasks]
+        cols = list(kwargs.keys())
 
-        dsk = {(name, i):
-               (apply, partial_by_order, list(frs),
-                {'function': methods.assign, 'other': other})
+        dsk = {(name, i): (assign, frs[0], list(frs[1:]), cols)
                for i, frs in enumerate(zip(*keys))}
         dsk = merge(dsk, *[d.dask for d in dasks])
 
@@ -136,6 +132,11 @@ Dask Name: {name}, {task} tasks
                 name=self._name,
                 task=len(self.dask)
             )
+
+
+def assign(df, dfs, cols):
+    kwargs = dict(zip(cols, dfs))
+    return df.assign(**kwargs)
 
 
 def map_partitions(func, ddf, meta, **kwargs):

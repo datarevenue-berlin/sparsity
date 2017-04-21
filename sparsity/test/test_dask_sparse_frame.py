@@ -104,10 +104,12 @@ def test_read_npz():
 def test_assign_column():
     s = pd.Series(np.arange(10))
     ds = dd.from_pandas(s, npartitions=2)
+    s2 = pd.Series(np.arange(10, 20))
+    ds2 = dd.from_pandas(s2, npartitions=2)
 
     f = pd.DataFrame(np.random.rand(10, 2), columns=['a', 'b'])
     dsf = dsp.from_pandas(f, npartitions=2)
 
-    dsf = dsf.assign(new=ds)
+    dsf = dsf.assign(new=ds, new2=ds2)
     sf = dsf.compute()
-    assert np.all(sf.todense() == f.assign(new=s))
+    assert np.all(sf.todense() == f.assign(new=s, new2=s2))
