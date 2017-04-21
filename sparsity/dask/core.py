@@ -1,12 +1,15 @@
-from scipy import sparse
-
 import dask
+import dask.dataframe as dd
 import pandas as pd
 from dask import threaded
 from dask.base import normalize_token, tokenize
-from dask.dataframe.utils import make_meta as dd_make_meta, _nonempty_index
+from dask.dataframe import methods
+from dask.dataframe.core import apply, partial_by_order
+from dask.dataframe.utils import make_meta as dd_make_meta
+from dask.dataframe.utils import _nonempty_index
 from dask.delayed import Delayed
 from dask.optimize import cull
+from scipy import sparse
 from toolz import merge
 
 import sparsity as sp
@@ -64,6 +67,31 @@ class SparseFrame(dask.base.Base):
     @property
     def _meta_nonempty(self):
         return _meta_nonempty(self._meta)
+
+    def assign(self, **kwargs):
+        for k, v in kwargs.items():
+            if not isinstance(v, dd.Series):
+                raise TypeError("Column assignment doesn't support type "
+                                "{0}".format(type(v).__name__))
+
+        # Figure out columns of the output
+        meta = self._meta.assign(**{k: v._meta for k, v in kwargs.items()})
+        name = 'assign-' + tokenize(self.assign, self, kwargs)
+
+        # set other parameters
+        other = list(enumerate(kwargs.keys(), start=1))
+        # All dask objects
+        dasks = [self] + list(kwargs.values())
+        # Their keys (dask graph)
+        keys = [d._keys() for d in dasks]
+
+        dsk = {(name, i):
+               (apply, partial_by_order, list(frs),
+                {'function': methods.assign, 'other': other})
+               for i, frs in enumerate(zip(*keys))}
+        dsk = merge(dsk, *[d.dask for d in dasks])
+
+        return SparseFrame(dsk, name, meta, self.divisions)
 
     def map_partitions(self, func, meta, *args, **kwargs):
         return map_partitions(func, self, meta, *args, **kwargs)
