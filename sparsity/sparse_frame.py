@@ -25,7 +25,7 @@ from sparsity.indexing import _CsrILocationIndexer, _CsrLocIndexer
 
 def _is_empty(data):
     try:
-        if data.nnz == 0:
+        if any(map(lambda x: x== 0, data.shape)):
             return True
         else:
             return False
