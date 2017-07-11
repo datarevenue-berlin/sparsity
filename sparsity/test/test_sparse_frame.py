@@ -9,6 +9,7 @@ import pytest
 from scipy import sparse
 
 from sparsity import SparseFrame, sparse_one_hot
+from sparsity.io import _csr_to_dict
 
 from .conftest import tmpdir
 
@@ -215,6 +216,26 @@ def test_set_index(sf_midx):
     assert np.all(sf.loc[:2].data.todense() == np.identity(5)[:2])
 
     # assert np.all(sf.loc[[4, 5]].data.todense() == np.identity(5)[[3, 4]])
+
+
+def test_save_load_multiindex(sf_midx):
+    with tmpdir() as tmp:
+        # test new
+        path = os.path.join(tmp, 'sf.npz')
+        sf_midx.to_npz(path)
+        res = SparseFrame.read_npz(path)
+        assert isinstance(res.index, pd.MultiIndex)
+
+        # test backwards compatibility
+        def _to_npz_legacy(sf, filename):
+            data = _csr_to_dict(sf.data)
+            data['frame_index'] = sf.index.values
+            data['frame_columns'] = sf.columns.values
+            np.savez(filename, **data)
+
+        _to_npz_legacy(sf_midx, path)
+        res = SparseFrame.read_npz(path)
+        assert isinstance(res.index, pd.MultiIndex)
 
 
 def test_new_column_assign_array():
