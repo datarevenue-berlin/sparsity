@@ -20,6 +20,8 @@ from sparsity.dask.indexing import _LocIndexer
 
 
 def _make_meta(inp):
+    if isinstance(inp, sp.SparseFrame) and inp.empty:
+        return inp
     if isinstance(inp, sp.SparseFrame):
         return inp.iloc[:0]
     else:

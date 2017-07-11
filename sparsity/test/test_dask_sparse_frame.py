@@ -53,7 +53,9 @@ def test_loc(iindexer, correct_shape):
     df = pd.DataFrame(np.random.rand(10, 2),
                       index=list('ABCDEFGHIJ'))
     dsf = dsp.from_pandas(df, npartitions=2)
-    res = dsf.loc[iindexer].compute()
+    fut = dsf.loc[iindexer]
+    assert fut._meta.empty
+    res = fut.compute()
 
     assert isinstance(res, sp.SparseFrame)
     assert res.shape == correct_shape
@@ -102,6 +104,7 @@ def test_one_hot(clickstream):
     dsf = one_hot_encode(ddf, column='page_id',
                          categories=list('ABCDE'),
                          index_col=['index', 'id'])
+    assert dsf._meta.empty
     sf = dsf.compute()
     assert sf.shape == (100, 5)
     assert isinstance(sf.index, pd.MultiIndex)
@@ -115,6 +118,7 @@ def test_one_hot_disk_categories(clickstream):
         dsf = one_hot_encode(ddf, column='page_id',
                              categories=cat_path,
                              index_col=['index', 'id'])
+        assert dsf._meta.empty
         sf = dsf.compute()
         assert sf.shape == (100, 5)
         assert isinstance(sf.index, pd.MultiIndex)
@@ -141,5 +145,6 @@ def test_assign_column():
     dsf = dsp.from_pandas(f, npartitions=2)
 
     dsf = dsf.assign(new=ds)
+    assert dsf._meta.empty
     sf = dsf.compute()
     assert np.all(sf.todense() == f.assign(new=s))

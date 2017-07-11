@@ -79,6 +79,7 @@ class SparseFrame(object):
                                 "\nThe error described above occurred while "
                                 "converting data to sparse matrix.")
         else:
+            self.empty = True if _is_empty(data) else False
             self._init_csr(data)
 
         # register indexers
