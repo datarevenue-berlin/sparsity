@@ -34,6 +34,8 @@ def to_npz(sf, filename):
         {'multiindex': True if isinstance(sf.index, pd.MultiIndex) else False}
     data['frame_index'] = sf.index.values
     data['frame_columns'] = sf.columns.values
+    if not filename.endswith('.npz'):
+        filename += '.npz'
     if not filename.startswith('s3://'):
         fp = open(filename, 'wb')
         np.savez(fp, **data)
