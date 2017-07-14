@@ -34,5 +34,8 @@ setup(
                         'scipy>=0.18.1',
                         'numpy>=1.12.0'
                     ],
+    test_requires=[
+        'moto'
+    ],
     zip_safe=False
 )

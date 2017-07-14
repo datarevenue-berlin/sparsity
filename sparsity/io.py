@@ -1,5 +1,8 @@
+from io import BytesIO
+
 import numpy as np
 import pandas as pd
+from s3fs import S3FileSystem
 from scipy import sparse
 
 try:
@@ -24,17 +27,35 @@ def traildb_to_coo(db, fieldname):
     return uuids, timestamps, cols,\
         sparse.coo_matrix((np.ones(num_events), (r_idx, c_idx)))
 
+
 def to_npz(sf, filename):
     data = _csr_to_dict(sf.data)
     data['metadata'] = \
         {'multiindex': True if isinstance(sf.index, pd.MultiIndex) else False}
     data['frame_index'] = sf.index.values
     data['frame_columns'] = sf.columns.values
-    np.savez(filename, **data)
+    if not filename.startswith('s3://'):
+        fp = open(filename, 'wb')
+        np.savez(fp, **data)
+    else:
+        _save_npz_s3(data, filename)
+
+
+def _save_npz_s3(data, filename):
+    buffer = BytesIO()
+    np.savez(buffer, **data)
+    buffer.seek(0)
+    fs = S3FileSystem()
+    fp = fs.open(filename, 'wb')
+    fp.write(buffer.read())
 
 
 def read_npz(filename):
-    loader = np.load(filename)
+    open_f = open if not filename.startswith('s3://') \
+        else S3FileSystem().open
+    fp = open_f(filename, 'rb')
+
+    loader = np.load(fp)
     csr_mat = _load_csr(loader)
     idx = _load_idx_from_npz(loader)
     cols = loader['frame_columns']

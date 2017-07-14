@@ -2,9 +2,13 @@
 import datetime as dt
 import os
 
+#import dask.dataframe as dd
+from contextlib import contextmanager
+
 import numpy as np
 import pandas as pd
 import pytest
+from moto import mock_s3
 from scipy import sparse
 from sparsity import SparseFrame, sparse_one_hot
 from sparsity.io import _csr_to_dict
@@ -15,6 +19,27 @@ try:
     import traildb
 except (ImportError, OSError):
     traildb = False
+
+
+@contextmanager
+def mock_s3_fs(bucket, data=None):
+    try:
+        m = mock_s3()
+        m.start()
+        import boto3
+        import s3fs
+        client = boto3.client('s3', region_name='eu-west-1')
+        client.create_bucket(Bucket=bucket)
+        if data is not None:
+            data = data.copy()
+            for key, value in data.items():
+                client.put_object(Bucket=bucket, Key=key, Body=value)
+        yield
+    finally:
+        if data is not None:
+            for key in data.keys():
+                client.delete_object(Bucket=bucket, Key=key)
+        m.stop()
 
 
 # 2017 starts with a sunday
@@ -532,6 +557,16 @@ def test_npz_io(complex_example):
     assert np.all(loaded.index == sf.index)
     assert np.all(loaded.columns == sf.columns)
     os.remove('/tmp/sparse.npz')
+
+
+def test_npz_io_s3(complex_example):
+    with mock_s3_fs('sparsity'):
+        sf, second, third = complex_example
+        sf.to_npz('s3://sparsity/sparse.npz')
+        loaded = SparseFrame.read_npz('s3://sparsity/sparse.npz')
+        assert np.all(loaded.data.todense() == sf.data.todense())
+        assert np.all(loaded.index == sf.index)
+        assert np.all(loaded.columns == sf.columns)
 
 
 def test_getitem():
