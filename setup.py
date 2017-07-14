@@ -32,7 +32,8 @@ setup(
     install_requires=[
                         'pandas>=0.19.0',
                         'scipy>=0.18.1',
-                        'numpy>=1.12.0'
+                        'numpy>=1.12.0',
+                        's3fs>=0.1.0'
                     ],
     test_requires=[
         'moto'
