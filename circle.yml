@@ -11,7 +11,7 @@ dependencies:
         - pip install numpy cython 2>&1
         - pip install pytest pytest-cov
         - pip install -v scipy pandas
-        - pip install dask[dataframe]
+        - pip install dask[dataframe] moto
 test:
     override:
         - pip install .
