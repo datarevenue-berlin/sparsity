@@ -1,6 +1,7 @@
 # coding=utf-8
 import traceback
 import uuid
+from collections import OrderedDict
 from functools import partial, reduce
 
 import numpy as np
@@ -623,21 +624,37 @@ def _create_group_matrix(group_idx, dtype='f8'):
                              dtype=dtype).tocsr()
 
 
-def sparse_one_hot(df, column, categories, dtype='f8', index_col=None):
+def sparse_one_hot(df, categories, order=None, dtype='f8', index_col=None):
     """
     One-hot encode a single column of a pandas.DataFrame.
     Returns a SparseFrame.
+
+    See the documentation of :func:`sparsity.dask.reshape.one_hot_encode`.
     """
-    if isinstance(categories, str):
-        categories = _just_read_array(categories)
-    cols, csr = _one_hot_series_csr(categories, dtype, df[column])
+    if order is not None:
+        categories = OrderedDict([(column, categories[column])
+                                  for column in order])
+
+    new_cols = []
+    new_data = None
+    for column, column_cat in categories.items():
+        if isinstance(column_cat, str):
+            column_cat = _just_read_array(column_cat)
+        cols, csr = _one_hot_series_csr(column_cat, dtype, df[column])
+        new_cols.extend(cols)
+        if new_data is None:
+            new_data = csr
+        else:
+            new_data = sparse.hstack([new_data, csr], format='csr')
+
+        pass
 
     if not isinstance(index_col, list):
         new_index = df[index_col] if index_col else df.index
     else:
         df = df.reset_index()
         new_index = pd.MultiIndex.from_arrays(df[index_col].values.T)
-    return SparseFrame(csr, index=new_index, columns=cols)
+    return SparseFrame(new_data, index=new_index, columns=new_cols)
 
 
 def _one_hot_series_csr(categories, dtype, oh_col):

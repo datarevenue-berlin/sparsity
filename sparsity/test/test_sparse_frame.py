@@ -2,12 +2,10 @@
 import datetime as dt
 import os
 
-#import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 import pytest
 from scipy import sparse
-
 from sparsity import SparseFrame, sparse_one_hot
 from sparsity.io import _csr_to_dict
 
@@ -26,11 +24,25 @@ def sampledata():
         sample_data = pd.DataFrame(
             dict(date=pd.date_range("2017-01-01", periods=n)))
         sample_data["weekday"] = sample_data.date.dt.weekday_name
+        sample_data["weekday_abbr"] = sample_data.weekday.apply(
+            lambda x: x[:3])
         sample_data["id"] = np.tile(np.arange(7), len(sample_data) // 7 + 1)[
                             :len(sample_data)]
         return sample_data
 
     return gendata
+
+
+@pytest.fixture()
+def weekdays():
+    return ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday',
+            'Friday', 'Saturday']
+
+
+@pytest.fixture()
+def weekdays_abbr(weekdays):
+    return list(map(lambda x: x[:3], weekdays))
+
 
 @pytest.fixture()
 def groupby_frame():
@@ -388,23 +400,51 @@ def test_csr_one_hot_series_disk_categories(sampledata):
                       'Thursday', 'Friday', 'Saturday']
         cat_path = os.path.join(tmp, 'bla.pickle')
         pd.Series(categories).to_pickle(cat_path)
-        sparse_frame = sparse_one_hot(sampledata(49), 'weekday', cat_path)
+        sparse_frame = sparse_one_hot(sampledata(49), {'weekday': cat_path})
         res = sparse_frame.groupby_sum(np.tile(np.arange(7), 7)).data.todense()
         assert np.all(res == np.identity(7) * 7)
 
 
-def test_csr_one_hot_series(sampledata):
-    categories = ['Sunday', 'Monday', 'Tuesday', 'Wednesday',
-                  'Thursday', 'Friday', 'Saturday']
-    sparse_frame = sparse_one_hot(sampledata(49), 'weekday', categories)
+def test_csr_one_hot_series(sampledata, weekdays, weekdays_abbr):
+    correct = np.hstack((np.identity(7) * 7,
+                         np.identity(7) * 7))
+
+    categories = {'weekday': weekdays,
+                  'weekday_abbr': weekdays_abbr}
+
+    sparse_frame = sparse_one_hot(sampledata(49), categories,
+                                  order=['weekday', 'weekday_abbr'])
+
     res = sparse_frame.groupby_sum(np.tile(np.arange(7), 7)).data.todense()
-    assert np.all(res == np.identity(7) * 7)
+    assert np.all(res == correct)
+    assert all(sparse_frame.columns == (weekdays + weekdays_abbr))
+
+
+def test_csr_one_hot_series_other_order(sampledata, weekdays, weekdays_abbr):
+
+    categories = {'weekday': weekdays,
+                  'weekday_abbr': weekdays_abbr}
+
+    sparse_frame = sparse_one_hot(sampledata(49), categories,
+                                  order=['weekday_abbr', 'weekday'])
+
+    assert all(sparse_frame.columns == (weekdays_abbr + weekdays))
+
+
+def test_csr_one_hot_series_no_order(sampledata, weekdays, weekdays_abbr):
+
+    categories = {'weekday': weekdays,
+                  'weekday_abbr': weekdays_abbr}
+
+    sparse_frame = sparse_one_hot(sampledata(49), categories)
+
+    assert sorted(sparse_frame.columns) == sorted(weekdays_abbr + weekdays)
 
 
 def test_csr_one_hot_series_too_much_categories(sampledata):
     categories = ['Sunday', 'Monday', 'Tuesday', 'Wednesday',
                   'Thursday', 'Friday', 'Yesterday', 'Saturday', 'Birthday']
-    sparse_frame = sparse_one_hot(sampledata(49), 'weekday', categories)
+    sparse_frame = sparse_one_hot(sampledata(49), {'weekday': categories})
     res = sparse_frame.groupby_sum(np.tile(np.arange(7), 7)).data.todense()
 
     correct = np.identity(7) * 7
@@ -418,7 +458,7 @@ def test_csr_one_hot_series_too_little_categories(sampledata):
     categories = ['Sunday', 'Monday', 'Tuesday', 'Wednesday',
                   'Thursday', 'Friday']
     with pytest.raises(ValueError):
-        sparse_one_hot(sampledata(49), 'weekday', categories)
+        sparse_one_hot(sampledata(49), {'weekday': categories})
 
 
 @pytest.mark.skipif(traildb is False, reason="TrailDB not installed")
@@ -475,12 +515,10 @@ def test_vstack_multi_index(clickstream):
     df_0 = clickstream.iloc[:len(clickstream) // 2]
     df_1 = clickstream.iloc[len(clickstream) // 2:]
     sf_0 = sparse_one_hot(df_0,
-                          categories=list('ABCDE'),
-                          column='page_id',
+                          categories={'page_id': list('ABCDE')},
                           index_col=['index', 'id'])
     sf_1 = sparse_one_hot(df_1,
-                          categories=list('ABCDE'),
-                          column='page_id',
+                          categories={'page_id': list('ABCDE')},
                           index_col=['index', 'id'])
     res = SparseFrame.vstack([sf_0, sf_1])
     assert isinstance(res.index, pd.MultiIndex)

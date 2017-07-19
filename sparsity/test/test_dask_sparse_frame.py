@@ -6,10 +6,9 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 import pytest
-from dask.async import get_sync
-
 import sparsity as sp
 import sparsity.dask as dsp
+from dask.async import get_sync
 from sparsity import sparse_one_hot
 from sparsity.dask.reshape import one_hot_encode
 
@@ -64,8 +63,7 @@ def test_dask_loc(clickstream):
     sf = dd.from_pandas(clickstream, npartitions=10) \
         .map_partitions(
         sparse_one_hot,
-        column='page_id',
-        categories=list('ABCDE'),
+        categories={'page_id': list('ABCDE')},
         meta=list
     )
 
@@ -79,9 +77,8 @@ def test_dask_multi_index_loc(clickstream):
     sf = dd.from_pandas(clickstream, npartitions=10) \
         .map_partitions(
             sparse_one_hot,
-            column='page_id',
             index_col=['index', 'id'],
-            categories=list('ABCDE'),
+            categories={'page_id': list('ABCDE')},
             meta=list
     )
     res = sf.loc['2016-01-15':'2016-02-15']
@@ -99,15 +96,48 @@ def test_repr():
     assert isinstance(dsf.__repr__(), str)
 
 
-def test_one_hot(clickstream):
+def test_one_hot_no_order(clickstream):
     ddf = dd.from_pandas(clickstream, npartitions=10)
-    dsf = one_hot_encode(ddf, column='page_id',
-                         categories=list('ABCDE'),
+    dsf = one_hot_encode(ddf,
+                         categories={'page_id': list('ABCDE'),
+                                     'other_categorical': list('FGHIJ')},
                          index_col=['index', 'id'])
     assert dsf._meta.empty
+    assert sorted(dsf.columns) == list('ABCDEFGHIJ')
     sf = dsf.compute()
-    assert sf.shape == (100, 5)
+    assert sf.shape == (100, 10)
     assert isinstance(sf.index, pd.MultiIndex)
+    assert sorted(sf.columns) == list('ABCDEFGHIJ')
+
+
+def test_one_hot_order1(clickstream):
+    ddf = dd.from_pandas(clickstream, npartitions=10)
+    dsf = one_hot_encode(ddf,
+                         categories={'page_id': list('ABCDE'),
+                                     'other_categorical': list('FGHIJ')},
+                         order=['page_id', 'other_categorical'],
+                         index_col=['index', 'id'])
+    assert dsf._meta.empty
+    assert all(dsf.columns == list('ABCDEFGHIJ'))
+    sf = dsf.compute()
+    assert sf.shape == (100, 10)
+    assert isinstance(sf.index, pd.MultiIndex)
+    assert all(sf.columns == list('ABCDEFGHIJ'))
+
+
+def test_one_hot_order2(clickstream):
+    ddf = dd.from_pandas(clickstream, npartitions=10)
+    dsf = one_hot_encode(ddf,
+                         categories={'page_id': list('ABCDE'),
+                                     'other_categorical': list('FGHIJ')},
+                         order=['other_categorical', 'page_id'],
+                         index_col=['index', 'id'])
+    assert dsf._meta.empty
+    assert all(dsf.columns == list('FGHIJABCDE'))
+    sf = dsf.compute()
+    assert sf.shape == (100, 10)
+    assert isinstance(sf.index, pd.MultiIndex)
+    assert all(sf.columns == list('FGHIJABCDE'))
 
 
 def test_one_hot_disk_categories(clickstream):
@@ -115,8 +145,8 @@ def test_one_hot_disk_categories(clickstream):
         cat_path = os.path.join(tmp, 'cat.pickle')
         pd.Series(list('ABCDE')).to_pickle(cat_path)
         ddf = dd.from_pandas(clickstream, npartitions=10)
-        dsf = one_hot_encode(ddf, column='page_id',
-                             categories=cat_path,
+        dsf = one_hot_encode(ddf,
+                             categories={'page_id': cat_path},
                              index_col=['index', 'id'])
         assert dsf._meta.empty
         sf = dsf.compute()
