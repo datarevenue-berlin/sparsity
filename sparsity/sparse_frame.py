@@ -626,7 +626,7 @@ def _create_group_matrix(group_idx, dtype='f8'):
 
 def sparse_one_hot(df, categories, order=None, dtype='f8', index_col=None):
     """
-    One-hot encode a single column of a pandas.DataFrame.
+    One-hot encode specified columns of a pandas.DataFrame.
     Returns a SparseFrame.
 
     See the documentation of :func:`sparsity.dask.reshape.one_hot_encode`.
