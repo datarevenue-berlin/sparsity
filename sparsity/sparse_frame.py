@@ -1,6 +1,7 @@
 # coding=utf-8
 import traceback
 import uuid
+import warnings
 from collections import OrderedDict
 from functools import partial, reduce
 
@@ -8,8 +9,6 @@ import numpy as np
 import pandas as pd
 from pandas.api import types
 from pandas.core.common import _default_index
-
-from drtools.utils.log import get_logger
 
 try:
     from pandas.indexes.base import _ensure_index
@@ -24,8 +23,6 @@ try:
 except:
     trail_db = False
 from sparsity.indexing import _CsrILocationIndexer, _CsrLocIndexer
-
-log = get_logger(__name__)
 
 
 def _is_empty(data):
@@ -647,9 +644,9 @@ def sparse_one_hot(df, column=None, categories=None, dtype='f8',
     See the documentation of :func:`sparsity.dask.reshape.one_hot_encode`.
     """
     if column is not None:
-        log.warn(
-            '`column` argument of '
-            'sparsity.sparse_frame.sparse_one_hot function is deprecated.'
+        warnings.warn(
+            '`column` argument of sparsity.sparse_frame.sparse_one_hot '
+            'function is deprecated.'
         )
         if order is not None:
             raise ValueError('`order` and `column` arguments cannot be used '

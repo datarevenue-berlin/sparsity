@@ -3,12 +3,10 @@ from collections import OrderedDict
 import numpy as np
 
 import sparsity as sp
-from drtools.utils.log import get_logger
+import warnings
 from sparsity import sparse_one_hot
 from sparsity.dask import SparseFrame
 from sparsity.io import _just_read_array
-
-log = get_logger(__name__)
 
 
 def one_hot_encode(ddf, column=None, categories=None, index_col=None,
@@ -47,9 +45,9 @@ def one_hot_encode(ddf, column=None, categories=None, index_col=None,
         sparse_one_hot: sparsity.dask.SparseFrame
     """
     if column is not None:
-        log.warn(
-            '`column` argument of '
-            'sparsity.dask.reshape.one_hot_encode function is deprecated.'
+        warnings.warn(
+            '`column` argument of sparsity.dask.reshape.one_hot_encode '
+            'function is deprecated.'
         )
         if order is not None:
             raise ValueError('`order` and `column` arguments cannot be used '
