@@ -400,7 +400,8 @@ def test_csr_one_hot_series_disk_categories(sampledata):
                       'Thursday', 'Friday', 'Saturday']
         cat_path = os.path.join(tmp, 'bla.pickle')
         pd.Series(categories).to_pickle(cat_path)
-        sparse_frame = sparse_one_hot(sampledata(49), {'weekday': cat_path})
+        sparse_frame = sparse_one_hot(sampledata(49),
+                                      categories={'weekday': cat_path})
         res = sparse_frame.groupby_sum(np.tile(np.arange(7), 7)).data.todense()
         assert np.all(res == np.identity(7) * 7)
 
@@ -420,7 +421,7 @@ def test_csr_one_hot_series(sampledata, weekdays, weekdays_abbr):
     categories = {'weekday': weekdays,
                   'weekday_abbr': weekdays_abbr}
 
-    sparse_frame = sparse_one_hot(sampledata(49), categories,
+    sparse_frame = sparse_one_hot(sampledata(49), categories=categories,
                                   order=['weekday', 'weekday_abbr'])
 
     res = sparse_frame.groupby_sum(np.tile(np.arange(7), 7)).data.todense()
@@ -433,7 +434,7 @@ def test_csr_one_hot_series_other_order(sampledata, weekdays, weekdays_abbr):
     categories = {'weekday': weekdays,
                   'weekday_abbr': weekdays_abbr}
 
-    sparse_frame = sparse_one_hot(sampledata(49), categories,
+    sparse_frame = sparse_one_hot(sampledata(49), categories=categories,
                                   order=['weekday_abbr', 'weekday'])
 
     assert all(sparse_frame.columns == (weekdays_abbr + weekdays))
@@ -444,7 +445,7 @@ def test_csr_one_hot_series_no_order(sampledata, weekdays, weekdays_abbr):
     categories = {'weekday': weekdays,
                   'weekday_abbr': weekdays_abbr}
 
-    sparse_frame = sparse_one_hot(sampledata(49), categories)
+    sparse_frame = sparse_one_hot(sampledata(49), categories=categories)
 
     assert sorted(sparse_frame.columns) == sorted(weekdays_abbr + weekdays)
 
@@ -452,7 +453,8 @@ def test_csr_one_hot_series_no_order(sampledata, weekdays, weekdays_abbr):
 def test_csr_one_hot_series_too_much_categories(sampledata):
     categories = ['Sunday', 'Monday', 'Tuesday', 'Wednesday',
                   'Thursday', 'Friday', 'Yesterday', 'Saturday', 'Birthday']
-    sparse_frame = sparse_one_hot(sampledata(49), {'weekday': categories})
+    sparse_frame = sparse_one_hot(sampledata(49),
+                                  categories={'weekday': categories})
     res = sparse_frame.groupby_sum(np.tile(np.arange(7), 7)).data.todense()
 
     correct = np.identity(7) * 7
@@ -466,7 +468,7 @@ def test_csr_one_hot_series_too_little_categories(sampledata):
     categories = ['Sunday', 'Monday', 'Tuesday', 'Wednesday',
                   'Thursday', 'Friday']
     with pytest.raises(ValueError):
-        sparse_one_hot(sampledata(49), {'weekday': categories})
+        sparse_one_hot(sampledata(49), categories={'weekday': categories})
 
 
 @pytest.mark.skipif(traildb is False, reason="TrailDB not installed")

@@ -638,20 +638,23 @@ def _parse_legacy_soh_interface(categories, order):
     return new_categories, new_order
 
 
-def sparse_one_hot(df, categories, order=None, dtype='f8', index_col=None):
+def sparse_one_hot(df, column=None, categories=None, dtype='f8',
+                   index_col=None, order=None):
     """
     One-hot encode specified columns of a pandas.DataFrame.
     Returns a SparseFrame.
 
     See the documentation of :func:`sparsity.dask.reshape.one_hot_encode`.
     """
-    if not isinstance(categories, dict):
+    if column is not None:
         log.warn(
-            'Detected usage of deprecated interface of '
-            'sparsity.sparse_frame.sparse_one_hot function. Trying to '
-            'fall back. The result is not guaranteed to be correct!'
+            '`column` argument of '
+            'sparsity.sparse_frame.sparse_one_hot function is deprecated.'
         )
-        categories, order = _parse_legacy_soh_interface(categories, order)
+        if order is not None:
+            raise ValueError('`order` and `column` arguments cannot be used '
+                             'together.')
+        categories = {column: categories}
 
     if order is not None:
         categories = OrderedDict([(column, categories[column])
