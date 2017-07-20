@@ -6,9 +6,10 @@ from functools import partial, reduce
 
 import numpy as np
 import pandas as pd
-from is24.log import get_logger
 from pandas.api import types
 from pandas.core.common import _default_index
+
+from drtools.utils.log import get_logger
 
 try:
     from pandas.indexes.base import _ensure_index

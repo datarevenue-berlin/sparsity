@@ -1,9 +1,9 @@
 from collections import OrderedDict
 
 import numpy as np
-from is24.log import get_logger
 
 import sparsity as sp
+from drtools.utils.log import get_logger
 from sparsity import sparse_one_hot
 from sparsity.dask import SparseFrame
 from sparsity.io import _just_read_array
