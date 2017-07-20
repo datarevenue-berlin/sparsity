@@ -636,18 +636,14 @@ def sparse_one_hot(df, categories, order=None, dtype='f8', index_col=None):
                                   for column in order])
 
     new_cols = []
-    new_data = None
+    csrs = []
     for column, column_cat in categories.items():
         if isinstance(column_cat, str):
             column_cat = _just_read_array(column_cat)
         cols, csr = _one_hot_series_csr(column_cat, dtype, df[column])
         new_cols.extend(cols)
-        if new_data is None:
-            new_data = csr
-        else:
-            new_data = sparse.hstack([new_data, csr], format='csr')
-
-        pass
+        csrs.append(csr)
+    new_data = sparse.hstack(csrs, format='csr')
 
     if not isinstance(index_col, list):
         new_index = df[index_col] if index_col else df.index
