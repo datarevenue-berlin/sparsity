@@ -96,6 +96,26 @@ def test_repr():
     assert isinstance(dsf.__repr__(), str)
 
 
+def test_one_hot_legacy_args(clickstream):
+    ddf = dd.from_pandas(clickstream, npartitions=10)
+    dsf = one_hot_encode(ddf, 'page_id', list('ABCDE'), ['index', 'id'])
+    assert dsf._meta.empty
+    sf = dsf.compute()
+    assert sf.shape == (100, 5)
+    assert isinstance(sf.index, pd.MultiIndex)
+
+
+def test_one_hot_legacy_kwargs(clickstream):
+    ddf = dd.from_pandas(clickstream, npartitions=10)
+    dsf = one_hot_encode(ddf, column='page_id',
+                         categories=list('ABCDE'),
+                         index_col=['index', 'id'])
+    assert dsf._meta.empty
+    sf = dsf.compute()
+    assert sf.shape == (100, 5)
+    assert isinstance(sf.index, pd.MultiIndex)
+
+
 def test_one_hot_no_order(clickstream):
     ddf = dd.from_pandas(clickstream, npartitions=10)
     dsf = one_hot_encode(ddf,

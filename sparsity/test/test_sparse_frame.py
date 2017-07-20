@@ -405,6 +405,14 @@ def test_csr_one_hot_series_disk_categories(sampledata):
         assert np.all(res == np.identity(7) * 7)
 
 
+def test_csr_one_hot_series_legacy(sampledata):
+    categories = ['Sunday', 'Monday', 'Tuesday', 'Wednesday',
+                  'Thursday', 'Friday', 'Saturday']
+    sparse_frame = sparse_one_hot(sampledata(49), 'weekday', categories)
+    res = sparse_frame.groupby_sum(np.tile(np.arange(7), 7)).data.todense()
+    assert np.all(res == np.identity(7) * 7)
+
+
 def test_csr_one_hot_series(sampledata, weekdays, weekdays_abbr):
     correct = np.hstack((np.identity(7) * 7,
                          np.identity(7) * 7))

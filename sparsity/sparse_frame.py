@@ -6,6 +6,7 @@ from functools import partial, reduce
 
 import numpy as np
 import pandas as pd
+from is24.log import get_logger
 from pandas.api import types
 from pandas.core.common import _default_index
 
@@ -22,6 +23,8 @@ try:
 except:
     trail_db = False
 from sparsity.indexing import _CsrILocationIndexer, _CsrLocIndexer
+
+log = get_logger(__name__)
 
 
 def _is_empty(data):
@@ -624,6 +627,16 @@ def _create_group_matrix(group_idx, dtype='f8'):
                              dtype=dtype).tocsr()
 
 
+def _parse_legacy_soh_interface(categories, order):
+    """
+    Old interface was
+    sparse_one_hot(df, column, categories, dtype='f8', index_col=None).
+    """
+    new_order = None
+    new_categories = {categories: order}
+    return new_categories, new_order
+
+
 def sparse_one_hot(df, categories, order=None, dtype='f8', index_col=None):
     """
     One-hot encode specified columns of a pandas.DataFrame.
@@ -631,6 +644,14 @@ def sparse_one_hot(df, categories, order=None, dtype='f8', index_col=None):
 
     See the documentation of :func:`sparsity.dask.reshape.one_hot_encode`.
     """
+    if not isinstance(categories, dict):
+        log.warn(
+            'Detected usage of deprecated interface of '
+            'sparsity.sparse_frame.sparse_one_hot function. Trying to '
+            'fall back. The result is not guaranteed to be correct!'
+        )
+        categories, order = _parse_legacy_soh_interface(categories, order)
+
     if order is not None:
         categories = OrderedDict([(column, categories[column])
                                   for column in order])
