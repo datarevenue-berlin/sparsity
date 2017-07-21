@@ -1,2 +1,2 @@
 [run]
-omit = sparsity/test/*, */__init__.py
+omit = sparsity/test/*, */__init__.py, */_version.py
