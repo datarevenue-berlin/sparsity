@@ -1,16 +1,15 @@
+import warnings
 from collections import OrderedDict
 
 import numpy as np
 
 import sparsity as sp
-import warnings
 from sparsity import sparse_one_hot
 from sparsity.dask import SparseFrame
-from sparsity.io import _just_read_array
 
 
 def one_hot_encode(ddf, column=None, categories=None, index_col=None,
-                   order=None):
+                   order=None, prefixes=False):
     """
     Sparse one hot encoding of dask.DataFrame.
 
@@ -24,7 +23,7 @@ def one_hot_encode(ddf, column=None, categories=None, index_col=None,
     categories: dict
         Maps column name -> iterable of possible category values.
         See description of `order`.
-    index_col: str, iterable
+    index_col: str | iterable
         which columns to use as index
     order: iterable
         Specify order in which one-hot encoded columns should be aligned.
@@ -37,6 +36,14 @@ def one_hot_encode(ddf, column=None, categories=None, index_col=None,
         If you don't specify order, then output columns' order depends on
         iteration over `categories` dictionary. You can pass `categories`
         as an OrderedDict instead of providing `order` explicitly.
+    prefixes: bool
+        If False, column names will be the same as categories,
+        so that new columns will be named like:
+        [cat11, cat12, cat21, cat22, ...].
+
+        If True, original column name followed by an underscore will be added
+        in front of each category name, so that new columns will be named like:
+        [col1_cat11, col1_cat12, col2_cat21, col2_cat22, ...].
     column: DEPRECATED
         Kept only for backward compatibility.
 
@@ -60,18 +67,18 @@ def one_hot_encode(ddf, column=None, categories=None, index_col=None,
     if order is not None:
         categories = OrderedDict([(column, categories[column])
                                   for column in order])
-    columns = []
-    for column, column_cat in categories.items():
-        if isinstance(column_cat, str):
-            column_cat = _just_read_array(column_cat)
-        columns.extend(column_cat)
 
+    columns = sparse_one_hot(ddf._meta,
+                             categories=categories,
+                             index_col=index_col,
+                             prefixes=prefixes).columns
     meta = sp.SparseFrame(np.array([]), columns=columns,
                           index=idx_meta)
 
     dsf = ddf.map_partitions(sparse_one_hot,
                              categories=categories,
                              index_col=index_col,
+                             prefixes=prefixes,
                              meta=object)
 
     return SparseFrame(dsf.dask, dsf._name, meta, dsf.divisions)

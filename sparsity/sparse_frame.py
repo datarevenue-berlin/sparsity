@@ -222,7 +222,7 @@ class SparseFrame(object):
             return self._data
         return self._data[:-1,:]
 
-    # backwards comptability
+    # backwards compatibility
     def groupby(self, by=None, level=0):
         return self.groupby_sum(by, level)
 
@@ -636,7 +636,7 @@ def _parse_legacy_soh_interface(categories, order):
 
 
 def sparse_one_hot(df, column=None, categories=None, dtype='f8',
-                   index_col=None, order=None):
+                   index_col=None, order=None, prefixes=False):
     """
     One-hot encode specified columns of a pandas.DataFrame.
     Returns a SparseFrame.
@@ -663,8 +663,14 @@ def sparse_one_hot(df, column=None, categories=None, dtype='f8',
         if isinstance(column_cat, str):
             column_cat = _just_read_array(column_cat)
         cols, csr = _one_hot_series_csr(column_cat, dtype, df[column])
+        if prefixes:
+            cols = list(map(lambda x: '{}_{}'.format(column, x), cols))
         new_cols.extend(cols)
         csrs.append(csr)
+    if len(set(new_cols)) < len(new_cols):
+        raise ValueError('Different columns have same categories. This would '
+                         'result in duplicated column names. '
+                         'Set `prefix` to True to manage this situation.')
     new_data = sparse.hstack(csrs, format='csr')
 
     if not isinstance(index_col, list):

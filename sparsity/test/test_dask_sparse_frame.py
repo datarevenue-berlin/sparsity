@@ -119,6 +119,23 @@ def test_one_hot_no_order(clickstream):
     assert sorted(sf.columns) == list('ABCDEFGHIJ')
 
 
+def test_one_hot_prefixes(clickstream):
+    ddf = dd.from_pandas(clickstream, npartitions=10)
+    dsf = one_hot_encode(ddf,
+                         categories={'page_id': list('ABCDE'),
+                                     'other_categorical': list('FGHIJ')},
+                         index_col=['index', 'id'],
+                         prefixes=True)
+    correct_columns = list(map(lambda x: 'page_id_' + x, list('ABCDE'))) \
+        + list(map(lambda x: 'other_categorical_' + x, list('FGHIJ')))
+    assert dsf._meta.empty
+    assert sorted(dsf.columns) == sorted(correct_columns)
+    sf = dsf.compute()
+    assert sf.shape == (100, 10)
+    assert isinstance(sf.index, pd.MultiIndex)
+    assert sorted(sf.columns) == sorted(correct_columns)
+
+
 def test_one_hot_order1(clickstream):
     ddf = dd.from_pandas(clickstream, npartitions=10)
     dsf = one_hot_encode(ddf,
