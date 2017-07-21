@@ -23,6 +23,20 @@ except (ImportError, OSError):
 
 @contextmanager
 def mock_s3_fs(bucket, data=None):
+    """Mocks an s3 bucket
+
+    Parameters
+    ----------
+    bucket: str
+        bucket name
+    data: dict
+        dictionary with paths relative to bucket and
+        bytestrings as values. Will mock data in bucket
+        if supplied.
+
+    Returns
+    -------
+    """
     try:
         m = mock_s3()
         m.start()
