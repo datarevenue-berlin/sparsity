@@ -8,13 +8,13 @@ import pandas as pd
 import pytest
 import sparsity as sp
 import sparsity.dask as dsp
-from dask.async import get_sync
+from dask.local import get_sync
 from sparsity import sparse_one_hot
 from sparsity.dask.reshape import one_hot_encode
 
 from .conftest import tmpdir
 
-dask.context.set_options(get=dask.async.get_sync)
+dask.context.set_options(get=dask.local.get_sync)
 
 
 @pytest.fixture
