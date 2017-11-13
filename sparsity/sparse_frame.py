@@ -584,9 +584,22 @@ class SparseFrame(object):
         """"Read from numpy npz format."""
         return cls(*read_npz(filename))
 
-    def to_npz(self, filename):
-        """Save to numpy npz format."""
-        to_npz(self, filename)
+    def to_npz(self, filename, block_size=None):
+        """Save to numpy npz format.
+
+        Parameters
+        ----------
+        filename: str
+            path to local file ot s3 path starting with `s3://`
+        block_size: int
+            block size in bytes only has effect if uploading to s3
+            if set to None default block will be 100MB
+
+        Returns
+        -------
+            None
+        """
+        to_npz(self, filename, block_size)
 
 
 def _aligned_csr_elop(a, b, a_idx, b_idx, op='_plus_', how='outer'):

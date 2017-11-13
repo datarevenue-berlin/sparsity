@@ -28,7 +28,7 @@ def traildb_to_coo(db, fieldname):
         sparse.coo_matrix((np.ones(num_events), (r_idx, c_idx)))
 
 
-def to_npz(sf, filename):
+def to_npz(sf, filename, block_size=None):
     data = _csr_to_dict(sf.data)
     data['metadata'] = \
         {'multiindex': True if isinstance(sf.index, pd.MultiIndex) else False}
@@ -40,17 +40,22 @@ def to_npz(sf, filename):
         fp = open(filename, 'wb')
         np.savez(fp, **data)
     else:
-        _save_npz_s3(data, filename)
+        _save_npz_s3(data, filename, block_size)
 
 
-def _save_npz_s3(data, filename):
+def _save_npz_s3(data, filename, block_size=None):
+    if block_size is None:
+        block_size = 2**20 * 100  # 100 MB
     buffer = BytesIO()
     np.savez(buffer, **data)
     buffer.seek(0)
     fs = S3FileSystem()
-    fp = fs.open(filename, 'wb')
-    fp.write(buffer.read())
-
+    with fs.open(filename, 'wb', block_size) as s3f:
+        while True:
+            data = buffer.read(block_size)
+            if len(data) == 0:
+                break
+            s3f.write(data)
 
 def read_npz(filename):
     open_f = open if not filename.startswith('s3://') \
