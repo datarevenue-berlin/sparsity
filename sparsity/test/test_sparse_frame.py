@@ -793,3 +793,5 @@ def test_empty_elemwise():
     res = sf.add(sf_empty).data.todense()
     assert np.all(res == sf.data.todense())
 
+    with pytest.raises(ValueError):
+        res = sf.add(sf_empty, fill_value=None)
