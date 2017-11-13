@@ -377,18 +377,25 @@ class SparseFrame(object):
         return SparseFrame(data=_data[:-1, :],
                            index=self.index, columns=self.columns)
 
-    def add(self, other, how='outer', **kwargs):
+    def add(self, other, how='outer', fill_value=0, **kwargs):
         """
         Aligned addition. Adds two tables by aligning them first.
 
         Parameters
         ----------
             other: sparsity.SparseFrame
+            fill_value: float
+                fill value if other frame is not exactly the same shape
+                for sparse data the only sensible fill value is 0 passing
+                any other value will result in a ValueError
 
         Returns
         -------
             added: sparsity.SparseFrame
         """
+        if fill_value != 0:
+            raise ValueError("Only 0 is accepted as fill_value "
+                             "for sparse data.")
         assert np.all(self._columns == other.columns)
         data, new_idx = _aligned_csr_elop(self._data, other._data,
                                           self.index, other.index,
