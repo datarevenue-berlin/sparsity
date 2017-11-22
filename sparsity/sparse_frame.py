@@ -377,7 +377,7 @@ class SparseFrame(object):
         passive_sort_idx = np.argsort(self._index)
         data = self._data[passive_sort_idx]
         index = self._index[passive_sort_idx]
-        return SparseFrame(data, index=index)
+        return SparseFrame(data, index=index, columns=self.columns)
 
     def fillna(self, value):
         """Replace NaN values in explicitly stored data with `value`."""
@@ -544,7 +544,11 @@ class SparseFrame(object):
             item = [item]
         idx = []
         for key in item:
-            idx.append(self.columns.get_loc(key))
+            loc = self.columns.get_loc(key)
+            # weired error appears here with movielens dataset
+            if not isinstance(loc, int):
+                loc = self.columns.tolist().index(key)
+            idx.append(loc)
         return SparseFrame(self.data[:,idx], index=self.index,
                            columns=item)
 

@@ -64,8 +64,8 @@ def to_npz(sf, filename, block_size=None, storage_options=None):
 
     protocol = urlparse(filename).scheme or 'file'
     if protocol == 'file':
-        fp = open(filename, 'wb')
-        np.savez(fp, **data)
+        with open(filename, 'wb') as fp:
+            np.savez(fp, **data)
     else:
         if block_size is None:
             block_size = 2 ** 20 * 100  # 100 MB
@@ -78,7 +78,7 @@ def to_npz(sf, filename, block_size=None, storage_options=None):
 def _save_remote(buffer, filename, block_size=None, storage_options=None):
     if storage_options is None:
         storage_options = {}
-    protocol = urlparse(filename).scheme or 'file'
+    protocol = urlparse(filename).scheme
     fs = FILE_SYSTEMS[protocol](**storage_options)
     with fs.open(filename, 'wb', block_size) as remote_f:
         while True:
@@ -98,6 +98,7 @@ def read_npz(filename, storage_options=None):
     csr_mat = _load_csr(loader)
     idx = _load_idx_from_npz(loader)
     cols = loader['frame_columns']
+    loader.close()
     return (csr_mat, idx, cols)
 
 
