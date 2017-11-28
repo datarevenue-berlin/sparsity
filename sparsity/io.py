@@ -3,7 +3,6 @@ from urllib.parse import urlparse
 
 import numpy as np
 import pandas as pd
-from s3fs import S3FileSystem
 from scipy import sparse
 
 try:
@@ -24,7 +23,7 @@ FILE_SYSTEMS = {
 
 try:
     import s3fs
-    FILE_SYSTEMS['s3'] = S3FileSystem
+    FILE_SYSTEMS['s3'] = s3fs.S3FileSystem
 except ImportError:
     pass
 
