@@ -549,15 +549,7 @@ class SparseFrame(object):
     def __getitem__(self, item):
         if not isinstance(item, (tuple, list)):
             item = [item]
-        idx = []
-        for key in item:
-            loc = self.columns.get_loc(key)
-            # weired error appears here with movielens dataset
-            if not isinstance(loc, int):
-                loc = self.columns.tolist().index(key)
-            idx.append(loc)
-        return SparseFrame(self.data[:,idx], index=self.index,
-                           columns=item)
+        return self.reindex_axis(item, axis=1)
 
     def dropna(self):
         """Drop nans from index."""
@@ -603,6 +595,108 @@ class SparseFrame(object):
     def read_npz(cls, filename, storage_options=None):
         """"Read from numpy npz format."""
         return cls(*read_npz(filename, storage_options))
+
+    @property
+    def axes(self):
+        return [self.index, self.columns]
+
+    def _get_axis_name(self, axis):
+        try:
+            return ['index', 'columns'][axis]
+        except IndexError:
+            raise ValueError('No axis named {} for {}'
+                             .format(axis, self.__class__))
+
+    def reindex(self, labels=None, index=None, columns=None, axis=None,
+                *args, **kwargs):
+        """Conform SparseFrame to new index.
+
+        Missing values will be filled with zeroes.
+
+        Parameters
+        ----------
+        labels: array-like
+            New labels / index to conform the axis specified by ‘axis’ to.
+        index, columns : array-like, optional
+            New labels / index to conform to. Preferably an Index object to
+            avoid duplicating data
+        axis: int
+            Axis to target. Can be either (0, 1).
+        args
+        kwargs
+
+        Returns
+        -------
+        reindexed: SparseFrame
+        """
+
+        if labels is not None and index is None and columns is None:
+            if axis is None:
+                axis = 0
+            return self.reindex_axis(labels, axis=axis, *args, **kwargs)
+        elif columns is not None and index is None:
+            return self.reindex_axis(columns, axis=1, *args, **kwargs)
+        elif columns is None and index is not None:
+            return self.reindex_axis(index, axis=0, *args, **kwargs)
+        elif columns is not None and index is not None:
+            obj = self.reindex_axis(columns, axis=1, *args, **kwargs)
+            return obj.reindex_axis(index, axis=0, *args, **kwargs)
+        else:
+            raise ValueError('Label parameter is mutually exclusive '
+                             'with both index or columns')
+
+    def reindex_axis(self, labels, axis=0, method=None,
+                     level=None, copy=True, limit=None, fill_value=0):
+        """Conform SparseFrame to new index.
+
+        Missing values will be filled with zeroes.
+
+        Parameters
+        ----------
+        labels: array-like
+            New labels / index to conform the axis specified by ‘axis’ to.
+        axis: int
+            Axis to target. Can be either (0, 1).
+        method: None
+            unsupported
+        level: None
+            unsupported
+        copy: None
+            unsupported
+        limit: None
+            unsupported
+        fill_value: None
+            unsupported
+
+        Returns
+        -------
+        reindexed: SparseFrame
+        """
+        if method is not None \
+                or not copy \
+                or level is not None \
+                or fill_value != 0 \
+                or limit is not None:
+            raise NotImplementedError(
+                'Error only labels, index, columns and/or axis are supported')
+        if axis == 0:
+            reindex_axis = 'index'
+            other_axis = 'columns'
+            new_index, idx = self.index.reindex(labels)
+            new_data = self._data[idx]
+        elif axis == 1:
+            reindex_axis = 'columns'
+            other_axis = 'index'
+            new_index, idx = self.columns.reindex(labels)
+            # we have a hidden zero column to replace missing indices (-1)
+            new_data = self._data.T[idx].T[:-1]
+        else:
+            raise ValueError("Only two dimensional data supported.")
+
+        kwargs = {reindex_axis: new_index,
+                  other_axis: getattr(self, other_axis)}
+
+        return SparseFrame(new_data, **kwargs)
 
     def to_npz(self, filename, block_size=None, storage_options=None):
         """Save to numpy npz format.
