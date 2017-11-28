@@ -907,6 +907,19 @@ def test_label_based_col_and_idx(sample_frame_labels):
     assert (res.columns == pd.Index(list('AB'))).all()
 
 
+def test_indexing_boolean_label_col_and_idx(sample_frame_labels):
+    res = sample_frame_labels.loc[[True, True, False, False, False], ['A', 'B']]
+    np.testing.assert_array_equal(
+        res.data.todense(), np.identity(2))
+    assert (res.index == pd.Index(list('VW'))).all()
+    assert (res.columns == pd.Index(list('AB'))).all()
+
+    res = sample_frame_labels.loc[['V', 'W'], [True, True, False, False, False]]
+    np.testing.assert_array_equal(
+        res.data.todense(), np.identity(2))
+    assert (res.index == pd.Index(list('VW'))).all()
+    assert (res.columns == pd.Index(list('AB'))).all()
+
 def test_empty_elemwise():
     sf_empty = SparseFrame(np.array([]), columns=['A', 'B'])
     sf = SparseFrame(np.identity(2), columns=['A', 'B'])
