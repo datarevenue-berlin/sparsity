@@ -79,6 +79,12 @@ def sampledata():
 
 
 @pytest.fixture()
+def sample_frame_labels():
+    return SparseFrame(np.identity(5),
+                       columns = list('ABCDE'),
+                       index = list('VWXYZ'))
+
+@pytest.fixture()
 def weekdays():
     return ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday',
             'Friday', 'Saturday']
@@ -875,6 +881,30 @@ def test_drop_multiple_labels():
     correct = np.identity(5)[:, [1, 3, 4]]
     assert sf.columns.tolist() == list('BDE')
     np.testing.assert_array_equal(sf.data.todense(), correct)
+
+
+def test_label_based_indexing_col(sample_frame_labels):
+    res = sample_frame_labels[['A', 'B']]
+    np.testing.assert_array_equal(
+        res.data.todense(), np.identity(5)[:, :2])
+    assert (res.index == pd.Index(list('VWXYZ'))).all()
+    assert (res.columns == pd.Index(list('AB'))).all()
+
+
+def test_label_based_indexing_idx(sample_frame_labels):
+    res = sample_frame_labels.loc[['X', 'Y', 'Z']]
+    np.testing.assert_array_equal(
+        res.data.todense(), np.identity(5)[2:, :])
+    assert (res.index == pd.Index(['X', 'Y', 'Z'])).all()
+    assert (res.columns == pd.Index(list('ABCDE'))).all()
+
+
+def test_label_based_col_and_idx(sample_frame_labels):
+    res = sample_frame_labels.loc[['V', 'W'], ['A', 'B']]
+    np.testing.assert_array_equal(
+        res.data.todense(), np.identity(2))
+    assert (res.index == pd.Index(list('VW'))).all()
+    assert (res.columns == pd.Index(list('AB'))).all()
 
 
 def test_empty_elemwise():
