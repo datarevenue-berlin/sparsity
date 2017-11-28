@@ -680,11 +680,13 @@ class SparseFrame(object):
             raise NotImplementedError(
                 'Error only labels, index, columns and/or axis are supported')
         if axis == 0:
+            self.index._can_reindex(labels)
             reindex_axis = 'index'
             other_axis = 'columns'
             new_index, idx = self.index.reindex(labels)
             new_data = self._data[idx]
         elif axis == 1:
+            self.columns._can_reindex(labels)
             reindex_axis = 'columns'
             other_axis = 'index'
             new_index, idx = self.columns.reindex(labels)
