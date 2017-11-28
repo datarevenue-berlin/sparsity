@@ -1,4 +1,3 @@
-import os
 import versioneer
 from distutils.core import setup, Extension
 from setuptools import find_packages

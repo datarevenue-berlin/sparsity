@@ -11,26 +11,28 @@ try:
 except (ImportError, OSError):
     TrailDB = False
 
+_filesystems = {}
 
-class LocalFileSystem():
+try:
+    from dask.bytes.local import LocalFileSystem
+except ImportError:
 
-    open = open
+    class LocalFileSystem:
+        open = open
 
-FILE_SYSTEMS = {
-    '': LocalFileSystem,
-    'file': LocalFileSystem
-}
+_filesystems[''] = LocalFileSystem
+_filesystems['file'] = LocalFileSystem
 
 try:
     import s3fs
-    FILE_SYSTEMS['s3'] = s3fs.S3FileSystem
+    _filesystems['s3'] = s3fs.S3FileSystem
 except ImportError:
     pass
 
 try:
     import gcsfs
-    FILE_SYSTEMS['gs'] = gcsfs.GCSFileSystem
-    FILE_SYSTEMS['gcs'] = gcsfs.GCSFileSystem
+    _filesystems['gs'] = gcsfs.GCSFileSystem
+    _filesystems['gcs'] = gcsfs.GCSFileSystem
 except ImportError:
     pass
 
@@ -78,7 +80,7 @@ def _save_remote(buffer, filename, block_size=None, storage_options=None):
     if storage_options is None:
         storage_options = {}
     protocol = urlparse(filename).scheme
-    fs = FILE_SYSTEMS[protocol](**storage_options)
+    fs = _filesystems[protocol](**storage_options)
     with fs.open(filename, 'wb', block_size) as remote_f:
         while True:
             data = buffer.read(block_size)
@@ -86,24 +88,28 @@ def _save_remote(buffer, filename, block_size=None, storage_options=None):
                 break
             remote_f.write(data)
 
+
 def read_npz(filename, storage_options=None):
     if storage_options is None:
         storage_options = {}
     protocol = urlparse(filename).scheme or 'file'
-    open_f = FILE_SYSTEMS[protocol](**storage_options).open
+    open_f = _filesystems[protocol](**storage_options).open
     fp = open_f(filename, 'rb')
 
     loader = np.load(fp)
-    csr_mat = _load_csr(loader)
-    idx = _load_idx_from_npz(loader)
-    cols = loader['frame_columns']
-    loader.close()
-    return (csr_mat, idx, cols)
+    try:
+        csr_mat = _load_csr(loader)
+        idx = _load_idx_from_npz(loader)
+        cols = loader['frame_columns']
+    finally:
+        loader.close()
+    return csr_mat, idx, cols
 
 
 def _csr_to_dict(array):
     return dict(data = array.data ,indices=array.indices,
                 indptr =array.indptr, shape=array.shape)
+
 
 def _load_csr(loader):
     return sparse.csr_matrix((loader['data'],
