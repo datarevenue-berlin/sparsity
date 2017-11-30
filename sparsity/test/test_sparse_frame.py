@@ -901,6 +901,7 @@ def test_label_based_indexing_idx(sample_frame_labels):
     key = ['X', 'Y', 'Z']
     results = [
         sample_frame_labels.loc[key],
+        sample_frame_labels.loc[key, :],
         sample_frame_labels.reindex(labels=key, axis=0),
         sample_frame_labels.reindex(index=key)
     ]
@@ -915,6 +916,7 @@ def test_label_based_col_and_idx(sample_frame_labels):
     key = ['V', 'W'], ['A', 'B']
     results = [
         sample_frame_labels.loc[key],
+        sample_frame_labels.loc[['V', 'W'], ['A', 'B']],
         sample_frame_labels.reindex(index=key[0], columns=key[1])
     ]
     for res in results:
