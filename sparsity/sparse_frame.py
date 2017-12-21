@@ -689,12 +689,16 @@ class SparseFrame(object):
             reindex_axis = 'index'
             other_axis = 'columns'
             new_index, idx = self.index.reindex(labels)
+            if idx is None:
+                return self.copy()
             new_data = self._data[idx]
         elif axis == 1:
             self.columns._can_reindex(labels)
             reindex_axis = 'columns'
             other_axis = 'index'
             new_index, idx = self.columns.reindex(labels)
+            if idx is None:
+                return self.copy()
             # we have a hidden zero column to replace missing indices (-1)
             new_data = self._data.T[idx].T[:-1]
         else:

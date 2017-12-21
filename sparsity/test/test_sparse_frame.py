@@ -235,6 +235,8 @@ def test_loc():
     # test slices
     assert np.all(sf.loc[:'B'].data.todense() == np.identity(5)[:2])
 
+    # test all
+    assert np.all(sf.loc[list("ABCDE")].data.todense() == np.identity(5))
 
     sf = SparseFrame(np.identity(5), pd.date_range("2016-10-01", periods=5))
 
@@ -690,6 +692,7 @@ def test_getitem():
     tmp = sf[['j', 'a']].data.todense()
     assert tmp[9, 0] == 1
     assert tmp[0, 1] == 1
+    assert (sf[list('abcdefghij')].data.todense() == np.identity(10)).all()
 
 
 def test_vstack():
