@@ -43,11 +43,8 @@ def finalize(results):
     results = [r for r in results if not r.empty]
     return sp.SparseFrame.vstack(results)
 
-class SparseFrame(dask.base.Base):
 
-    _optimize = staticmethod(optimize)
-    _default_get = staticmethod(threaded.get)
-    _finalize = staticmethod(finalize)
+class SparseFrame(dask.base.DaskMethodsMixin):
 
     def __init__(self, dsk, name, meta, divisions=None):
         self.dask = dsk
@@ -64,6 +61,24 @@ class SparseFrame(dask.base.Base):
 
         self.loc = _LocIndexer(self)
 
+    def __dask_graph__(self):
+        return self.dask
+
+    def __dask_keys__(self):
+        return self._keys()
+
+    __dask_scheduler__ = staticmethod(dask.threaded.get)
+
+    @staticmethod
+    def __dask_optimize__(dsk, keys, **kwargs):
+        # We cull unnecessary tasks here. Note that this isn't necessary,
+        # dask will do this automatically, this just shows one optimization
+        # you could do.
+        dsk2 = optimize(dsk, keys)
+        return dsk2
+
+    def __dask_postcompute__(self):
+        return finalize, ()
 
     @property
     def npartitions(self):

@@ -164,10 +164,15 @@ class SparseFrame(object):
     def min(self, *args, **kwargs):
         return self.data.min(*args, **kwargs)
 
-    def copy(self, *args, **kwargs):
-        return SparseFrame(self.data.copy(*args, **kwargs),
-                           self.index.copy(*args, **kwargs),
-                           self.columns.copy(*args, **kwargs))
+    def copy(self, *args, deep=False, **kwargs):
+        if deep:
+            return SparseFrame(self.data.copy(*args, **kwargs),
+                               self.index.copy(*args, **kwargs),
+                               self.columns.copy(*args, **kwargs))
+        else:
+            return SparseFrame(self.data,
+                               self.index.copy(*args, **kwargs),
+                               self.columns.copy(*args, **kwargs))
 
     def multiply(self, other, axis='columns'):
         """
