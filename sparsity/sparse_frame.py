@@ -164,7 +164,7 @@ class SparseFrame(object):
     def min(self, *args, **kwargs):
         return self.data.min(*args, **kwargs)
 
-    def copy(self, *args, deep=False, **kwargs):
+    def copy(self, *args, deep=True, **kwargs):
         if deep:
             return SparseFrame(self.data.copy(*args, **kwargs),
                                self.index.copy(*args, **kwargs),
