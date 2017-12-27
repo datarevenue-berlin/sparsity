@@ -237,6 +237,8 @@ def test_loc():
 
     # test all
     assert np.all(sf.loc[list("ABCDE")].data.todense() == np.identity(5))
+    assert np.all(sf.loc[:, :].data.todense() == np.identity(5))
+    assert np.all(sf.loc[:].data.todense() == np.identity(5))
 
     sf = SparseFrame(np.identity(5), pd.date_range("2016-10-01", periods=5))
 
