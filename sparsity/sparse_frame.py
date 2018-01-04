@@ -325,7 +325,7 @@ class SparseFrame(object):
         if axis not in set([0, 1]):
             raise ValueError("axis mut be either 0 or 1")
         if axis == 0:
-            if np.all(other._columns.values == self._columns.values):
+            if np.array_equal(other._columns.values, self._columns.values):
                 # take short path if join axes are identical
                 data = sparse.vstack([self.data, other.data])
                 index = np.hstack([self.index, other.index])
@@ -341,7 +341,7 @@ class SparseFrame(object):
                                   index=np.concatenate([self.index, other.index]),
                                   columns=new_index)
         elif axis == 1:
-            if np.all(self.index.values == other.index.values):
+            if np.array_equal(self.index.values, other.index.values):
                 # take short path if join axes are identical
                 data = sparse.hstack([self.data, other.data])
                 columns = np.hstack([self._columns, other._columns])
