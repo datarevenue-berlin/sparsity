@@ -12,6 +12,24 @@ from sparsity.dask.core import SparseFrame, _make_meta
 _sorted = sorted
 
 
+def from_ddf(ddf):
+    """Convert a dask.dataframe.DataFrame to a sparsity.dask.SparseFrame.
+
+    Parameters
+    ----------
+    ddf: dask.dataframe.DataFrame
+
+    Returns
+    -------
+    dsf: sparsity.dask.SparseFrame
+        a sparse dataframe collection
+    """
+    tmp = ddf.map_partitions(sp.SparseFrame, meta=object)
+    dsf = SparseFrame(tmp.dask, tmp._name, ddf._meta,
+                      divisions=tmp.divisions)
+    return dsf
+
+
 def from_pandas(df, npartitions=None, chunksize=None, name=None):
     """
     Parameters
