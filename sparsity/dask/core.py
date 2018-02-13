@@ -4,6 +4,7 @@ import dask
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
+import toolz
 from dask import threaded
 from dask.base import normalize_token, tokenize
 from dask.dataframe import methods
@@ -13,6 +14,7 @@ from dask.dataframe.core import (Scalar, Series, _emulate, _extract_meta,
                                  repartition_divisions, repartition_npartitions, split_evenly)
 from dask.dataframe.utils import make_meta as dd_make_meta
 from dask.dataframe.utils import _nonempty_index
+from dask.dataframe.multi import require
 from dask.delayed import Delayed
 from dask.optimize import cull
 from scipy import sparse
@@ -20,7 +22,7 @@ from toolz import merge, remove
 
 import sparsity as sp
 from sparsity.dask.indexing import _LocIndexer
-
+from .multi import align_partitions
 
 def _make_meta(inp):
     if isinstance(inp, sp.SparseFrame) and inp.empty:
@@ -147,6 +149,13 @@ class SparseFrame(dask.base.DaskMethodsMixin):
             return repartition(self, divisions, force)
         elif npartitions is not None:
             return repartition_npartitions(self, npartitions)
+        raise ValueError('Either divisions or npartitions must be supplied')
+
+    def join(self, other, on=None, how='left', lsuffix='',
+             rsuffix='', npartitions=None):
+
+        if not isinstance(other, (SparseFrame)):
+            raise ValueError('other must be SparseFrame')
 
     def __repr__(self):
         return \
@@ -160,6 +169,9 @@ Dask Name: {name}, {task} tasks
                 name=self._name,
                 task=len(self.dask)
             )
+
+
+required = {'left': [0], 'right': [1], 'inner': [0, 1], 'outer': []}
 
 
 def repartition(df, divisions=None, force=False):
