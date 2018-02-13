@@ -11,6 +11,7 @@ import sparsity.dask as dsp
 from dask.local import get_sync
 from sparsity import sparse_one_hot
 from sparsity.dask.reshape import one_hot_encode
+import pandas.util.testing as pdt
 
 from .conftest import tmpdir
 
@@ -220,3 +221,34 @@ def test_assign_column():
     assert dsf._meta.empty
     sf = dsf.compute()
     assert np.all(sf.todense() == f.assign(new=s))
+
+
+def test_repartition_divisions():
+    df = pd.DataFrame(np.identity(10))
+    dsf = dsp.from_pandas(df, npartitions=2)
+
+    dsf2 = dsf.repartition(divisions=[0,3,5,7,9])
+
+    assert isinstance(dsf2, dsp.SparseFrame)
+    assert dsf2.divisions == (0, 3, 5, 7, 9)
+
+    df2 = dsf2.compute().todense()
+    pdt.assert_frame_equal(df, df2)
+
+
+@pytest.mark.parametrize('start_part, end_part', [
+    (2, 4),
+    (3, 2),
+    (3, 3),
+])
+def test_repartition_n_divisions(start_part, end_part):
+    df = pd.DataFrame(np.identity(10))
+    dsf = dsp.from_pandas(df, npartitions=start_part)
+
+    dsf2 = dsf.repartition(npartitions=end_part)
+
+    assert isinstance(dsf2, dsp.SparseFrame)
+    assert dsf2.npartitions == end_part
+
+    df2 = dsf2.compute().todense()
+    pdt.assert_frame_equal(df, df2)

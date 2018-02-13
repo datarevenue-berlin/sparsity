@@ -1,3 +1,5 @@
+from operator import getitem
+
 import dask
 import dask.dataframe as dd
 import numpy as np
@@ -7,7 +9,8 @@ from dask.base import normalize_token, tokenize
 from dask.dataframe import methods
 from dask.dataframe.core import (Scalar, Series, _emulate, _extract_meta,
                                  _Frame, _maybe_from_pandas, apply, funcname,
-                                 no_default, partial, partial_by_order)
+                                 no_default, partial, partial_by_order,
+                                 repartition_divisions, repartition_npartitions, split_evenly)
 from dask.dataframe.utils import make_meta as dd_make_meta
 from dask.dataframe.utils import _nonempty_index
 from dask.delayed import Delayed
@@ -139,6 +142,12 @@ class SparseFrame(dask.base.DaskMethodsMixin):
             data = [['...'] * len(cols)] * len(index)
         return pd.DataFrame(data, columns=cols, index=index)
 
+    def repartition(self, npartitions=None, divisions=None, force=False):
+        if divisions is not None:
+            return repartition(self, divisions, force)
+        elif npartitions is not None:
+            return repartition_npartitions(self, npartitions)
+
     def __repr__(self):
         return \
             """
@@ -151,6 +160,107 @@ Dask Name: {name}, {task} tasks
                 name=self._name,
                 task=len(self.dask)
             )
+
+
+def repartition(df, divisions=None, force=False):
+    """ Repartition dataframe along new divisions
+    Dask.DataFrame objects are partitioned along their index.  Often when
+    multiple dataframes interact we need to align these partitionings.  The
+    ``repartition`` function constructs a new DataFrame object holding the same
+    data but partitioned on different values.  It does this by performing a
+    sequence of ``loc`` and ``concat`` calls to split and merge the previous
+    generation of partitions.
+    Parameters
+    ----------
+    divisions : list
+        List of partitions to be used
+    force : bool, default False
+        Allows the expansion of the existing divisions.
+        If False then the new divisions lower and upper bounds must be
+        the same as the old divisions.
+    Examples
+    --------
+    >>> sf = sf.repartition([0, 5, 10, 20])  # doctest: +SKIP
+    """
+
+    token = tokenize(df, divisions)
+    if isinstance(df, SparseFrame):
+        tmp = 'repartition-split-' + token
+        out = 'repartition-merge-' + token
+        dsk = repartition_divisions(df.divisions, divisions,
+                                    df._name, tmp, out, force=force)
+        return SparseFrame(merge(df.dask, dsk), out,
+                           df._meta, divisions)
+    raise ValueError('Data must be DataFrame or Series')
+
+
+def repartition_npartitions(df, npartitions):
+    """ Repartition dataframe to a smaller number of partitions """
+    new_name = 'repartition-%d-%s' % (npartitions, tokenize(df))
+    if df.npartitions == npartitions:
+        return df
+    elif df.npartitions > npartitions:
+        npartitions_ratio = df.npartitions / npartitions
+        new_partitions_boundaries = [int(new_partition_index * npartitions_ratio)
+                                     for new_partition_index in range(npartitions + 1)]
+        dsk = {}
+        for new_partition_index in range(npartitions):
+            value = (sp.SparseFrame.vstack,
+                     [(df._name, old_partition_index) for old_partition_index in
+                      range(new_partitions_boundaries[new_partition_index],
+                            new_partitions_boundaries[new_partition_index + 1])])
+            dsk[new_name, new_partition_index] = value
+        divisions = [df.divisions[new_partition_index]
+                     for new_partition_index in new_partitions_boundaries]
+        return SparseFrame(merge(df.dask, dsk), new_name, df._meta, divisions)
+    else:
+        original_divisions = divisions = pd.Series(df.divisions)
+        if (df.known_divisions and (np.issubdtype(divisions.dtype, np.datetime64) or
+                                    np.issubdtype(divisions.dtype, np.number))):
+            if np.issubdtype(divisions.dtype, np.datetime64):
+                divisions = divisions.values.astype('float64')
+
+            if isinstance(divisions, pd.Series):
+                divisions = divisions.values
+
+            n = len(divisions)
+            divisions = np.interp(x=np.linspace(0, n, npartitions + 1),
+                                  xp=np.linspace(0, n, n),
+                                  fp=divisions)
+            if np.issubdtype(original_divisions.dtype, np.datetime64):
+                divisions = pd.Series(divisions).astype(original_divisions.dtype).tolist()
+            elif np.issubdtype(original_divisions.dtype, np.integer):
+                divisions = divisions.astype(original_divisions.dtype)
+
+            if isinstance(divisions, np.ndarray):
+                divisions = divisions.tolist()
+
+            divisions = list(divisions)
+            divisions[0] = df.divisions[0]
+            divisions[-1] = df.divisions[-1]
+
+            return df.repartition(divisions=divisions)
+        else:
+            ratio = npartitions / df.npartitions
+            split_name = 'split-%s' % tokenize(df, npartitions)
+            dsk = {}
+            last = 0
+            j = 0
+            for i in range(df.npartitions):
+                new = last + ratio
+                if i == df.npartitions - 1:
+                    k = npartitions - j
+                else:
+                    k = int(new - last)
+                dsk[(split_name, i)] = (split_evenly, (df._name, i), k)
+                for jj in range(k):
+                    dsk[(new_name, j)] = (getitem, (split_name, i), jj)
+                    j += 1
+                last = new
+
+            divisions = [None] * (npartitions + 1)
+            return SparseFrame(merge(df.dask, dsk), new_name, df._meta, divisions)
+
 
 
 def is_broadcastable(dfs, s):
