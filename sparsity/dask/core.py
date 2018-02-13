@@ -4,7 +4,6 @@ import dask
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
-import toolz
 from dask import threaded
 from dask.base import normalize_token, tokenize
 from dask.dataframe import methods
@@ -12,9 +11,8 @@ from dask.dataframe.core import (Scalar, Series, _emulate, _extract_meta,
                                  _Frame, _maybe_from_pandas, apply, funcname,
                                  no_default, partial, partial_by_order,
                                  repartition_divisions, repartition_npartitions, split_evenly)
-from dask.dataframe.utils import make_meta as dd_make_meta
 from dask.dataframe.utils import _nonempty_index
-from dask.dataframe.multi import require
+from dask.dataframe.utils import make_meta as dd_make_meta
 from dask.delayed import Delayed
 from dask.optimize import cull
 from scipy import sparse
@@ -22,7 +20,7 @@ from toolz import merge, remove
 
 import sparsity as sp
 from sparsity.dask.indexing import _LocIndexer
-from .multi import align_partitions
+
 
 def _make_meta(inp):
     if isinstance(inp, sp.SparseFrame) and inp.empty:
