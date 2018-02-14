@@ -252,3 +252,23 @@ def test_repartition_n_divisions(start_part, end_part):
 
     df2 = dsf2.compute().todense()
     pdt.assert_frame_equal(df, df2)
+
+
+@pytest.mark.parametrize('how', ['left', 'right', 'inner', 'outer'])
+def test_distributed_join(how):
+    left = pd.DataFrame(np.identity(10),
+                        index=np.arange(10),
+                        columns=list('ABCDEFGHIJ'))
+    right = pd.DataFrame(np.identity(10),
+                         index=np.arange(5, 15),
+                         columns=list('KLMNOPQRST'))
+    correct = left.join(right, how=how).fillna(0)
+
+    d_left = dsp.from_pandas(left, npartitions=2)
+    d_right = dsp.from_pandas(right, npartitions=2)
+
+    joined = d_left.join(d_right, how=how)
+
+    res = joined.compute().todense()
+
+    pdt.assert_frame_equal(correct, res)

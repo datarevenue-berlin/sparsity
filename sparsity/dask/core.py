@@ -1,4 +1,5 @@
 from operator import getitem
+from pprint import pformat
 
 import dask
 import dask.dataframe as dd
@@ -10,7 +11,7 @@ from dask.dataframe import methods
 from dask.dataframe.core import (Scalar, Series, _emulate, _extract_meta,
                                  _Frame, _maybe_from_pandas, apply, funcname,
                                  no_default, partial, partial_by_order,
-                                 repartition_divisions, repartition_npartitions, split_evenly)
+                                 split_evenly, check_divisions)
 from dask.dataframe.utils import _nonempty_index
 from dask.dataframe.utils import make_meta as dd_make_meta
 from dask.delayed import Delayed
@@ -20,7 +21,6 @@ from toolz import merge, remove
 
 import sparsity as sp
 from sparsity.dask.indexing import _LocIndexer
-
 
 def _make_meta(inp):
     if isinstance(inp, sp.SparseFrame) and inp.empty:
@@ -142,7 +142,7 @@ class SparseFrame(dask.base.DaskMethodsMixin):
             data = [['...'] * len(cols)] * len(index)
         return pd.DataFrame(data, columns=cols, index=index)
 
-    def repartition(self, npartitions=None, divisions=None, force=False):
+    def repartition(self, divisions=None, npartitions=None, force=False):
         if divisions is not None:
             return repartition(self, divisions, force)
         elif npartitions is not None:
@@ -151,9 +151,13 @@ class SparseFrame(dask.base.DaskMethodsMixin):
 
     def join(self, other, on=None, how='left', lsuffix='',
              rsuffix='', npartitions=None):
+        from .multi import join_indexed_sparseframes
 
         if not isinstance(other, (SparseFrame)):
             raise ValueError('other must be SparseFrame')
+
+        return join_indexed_sparseframes(
+            self, other, how=how)
 
     def __repr__(self):
         return \
@@ -202,6 +206,145 @@ def repartition(df, divisions=None, force=False):
         return SparseFrame(merge(df.dask, dsk), out,
                            df._meta, divisions)
     raise ValueError('Data must be DataFrame or Series')
+
+
+def repartition_divisions(a, b, name, out1, out2, force=False):
+    """ dask graph to repartition dataframe by new divisions
+
+    Parameters
+    ----------
+    a : tuple
+        old divisions
+    b : tuple, list
+        new divisions
+    name : str
+        name of old dataframe
+    out1 : str
+        name of temporary splits
+    out2 : str
+        name of new dataframe
+    force : bool, default False
+        Allows the expansion of the existing divisions.
+        If False then the new divisions lower and upper bounds must be
+        the same as the old divisions.
+
+    Examples
+    --------
+    >>> repartition_divisions([1, 3, 7], [1, 4, 6, 7], 'a', 'b', 'c')  # doctest: +SKIP
+    {('b', 0): (<function boundary_slice at ...>, ('a', 0), 1, 3, False),
+     ('b', 1): (<function boundary_slice at ...>, ('a', 1), 3, 4, False),
+     ('b', 2): (<function boundary_slice at ...>, ('a', 1), 4, 6, False),
+     ('b', 3): (<function boundary_slice at ...>, ('a', 1), 6, 7, False)
+     ('c', 0): (<function concat at ...>,
+                (<type 'list'>, [('b', 0), ('b', 1)])),
+     ('c', 1): ('b', 2),
+     ('c', 2): ('b', 3)}
+    """
+    check_divisions(b)
+
+    if len(b) < 2:
+        # minimum division is 2 elements, like [0, 0]
+        raise ValueError('New division must be longer than 2 elements')
+
+    if force:
+        if a[0] < b[0]:
+            msg = ('left side of the new division must be equal or smaller '
+                   'than old division')
+            raise ValueError(msg)
+        if a[-1] > b[-1]:
+            msg = ('right side of the new division must be equal or larger '
+                   'than old division')
+            raise ValueError(msg)
+    else:
+        if a[0] != b[0]:
+            msg = 'left side of old and new divisions are different'
+            raise ValueError(msg)
+        if a[-1] != b[-1]:
+            msg = 'right side of old and new divisions are different'
+            raise ValueError(msg)
+
+    def _is_single_last_div(x):
+        """Whether last division only contains single label"""
+        return len(x) >= 2 and x[-1] == x[-2]
+
+    c = [a[0]]
+    d = dict()
+    low = a[0]
+
+    i, j = 1, 1     # indices for old/new divisions
+    k = 0           # index for temp divisions
+
+    last_elem = _is_single_last_div(a)
+
+    # process through old division
+    # left part of new division can be processed in this loop
+    while (i < len(a) and j < len(b)):
+        if a[i] < b[j]:
+            # tuple is something like:
+            # (methods.boundary_slice, ('from_pandas-#', 0), 3, 4, False))
+            d[(out1, k)] = (methods.boundary_slice, (name, i - 1), low, a[i], False)
+            low = a[i]
+            i += 1
+        elif a[i] > b[j]:
+            d[(out1, k)] = (methods.boundary_slice, (name, i - 1), low, b[j], False)
+            low = b[j]
+            j += 1
+        else:
+            d[(out1, k)] = (methods.boundary_slice, (name, i - 1), low, b[j], False)
+            low = b[j]
+            i += 1
+            j += 1
+        c.append(low)
+        k += 1
+
+    # right part of new division can remain
+    if a[-1] < b[-1] or b[-1] == b[-2]:
+        for _j in range(j, len(b)):
+            # always use right-most of old division
+            # because it may contain last element
+            m = len(a) - 2
+            d[(out1, k)] = (methods.boundary_slice, (name, m), low, b[_j], False)
+            low = b[_j]
+            c.append(low)
+            k += 1
+    else:
+        # even if new division is processed through,
+        # right-most element of old division can remain
+        if last_elem and i < len(a):
+            d[(out1, k)] = (methods.boundary_slice, (name, i - 1), a[i], a[i], False)
+            k += 1
+        c.append(a[-1])
+
+    # replace last element of tuple with True
+    d[(out1, k - 1)] = d[(out1, k - 1)][:-1] + (True,)
+
+    i, j = 0, 1
+
+    last_elem = _is_single_last_div(c)
+
+    while j < len(b):
+        tmp = []
+        while c[i] < b[j]:
+            tmp.append((out1, i))
+            i += 1
+        if last_elem and c[i] == b[-1] and (b[-1] != b[-2] or j == len(b) - 1) and i < k:
+            # append if last split is not included
+            tmp.append((out1, i))
+            i += 1
+        if len(tmp) == 0:
+            # dummy slice to return empty DataFrame or Series,
+            # which retain original data attributes (columns / name)
+            d[(out2, j - 1)] = (methods.boundary_slice, (name, 0), a[0], a[0], False)
+        elif len(tmp) == 1:
+            d[(out2, j - 1)] = tmp[0]
+        else:
+            if not tmp:
+                raise ValueError('check for duplicate partitions\nold:\n%s\n\n'
+                                 'new:\n%s\n\ncombined:\n%s'
+                                 % (pformat(a), pformat(b), pformat(c)))
+            d[(out2, j - 1)] = (sp.SparseFrame.vstack, tmp)
+        j += 1
+    return d
 
 
 def repartition_npartitions(df, npartitions):
