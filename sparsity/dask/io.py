@@ -24,6 +24,11 @@ def from_ddf(ddf):
     dsf: sparsity.dask.SparseFrame
         a sparse dataframe collection
     """
+    if not all(np.issubdtype(dtype, np.number) for
+               dtype in ddf.dtypes.tolist()):
+        raise ValueError('Cannot create a sparse frame '
+                         'of not numerical type')
+
     tmp = ddf.map_partitions(sp.SparseFrame, meta=object)
     dsf = SparseFrame(tmp.dask, tmp._name, ddf._meta,
                       divisions=tmp.divisions)

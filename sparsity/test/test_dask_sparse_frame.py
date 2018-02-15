@@ -11,6 +11,7 @@ import sparsity.dask as dsp
 from dask.local import get_sync
 from sparsity import sparse_one_hot
 from sparsity.dask.reshape import one_hot_encode
+import pandas.util.testing as pdt
 
 from .conftest import tmpdir
 
@@ -220,3 +221,22 @@ def test_assign_column():
     assert dsf._meta.empty
     sf = dsf.compute()
     assert np.all(sf.todense() == f.assign(new=s))
+
+
+def test_from_ddf():
+    ddf = dd.from_pandas(
+        pd.DataFrame(np.random.rand(20, 4),
+                     columns=list('ABCD')),
+        npartitions=4
+    )
+    correct = ddf.compute()
+
+    dsf = dsp.from_ddf(ddf)
+
+    res = dsf.compute().todense()
+
+    pdt.assert_frame_equal(correct, res)
+
+    with pytest.raises(ValueError):
+        ddf = ddf.assign(A="some str value")
+        dsf = dsp.from_ddf(ddf)
