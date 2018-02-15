@@ -317,6 +317,7 @@ class SparseFrame(object):
         -------
             joined: sparsity.SparseFrame
         """
+
         if isinstance(self._index, pd.MultiIndex)\
             or isinstance(other._index, pd.MultiIndex):
             raise NotImplementedError('MultiIndex not supported.')
@@ -347,7 +348,19 @@ class SparseFrame(object):
                 columns = np.hstack([self._columns, other._columns])
                 res = SparseFrame(data, index=self.index, columns=columns)
             else:
-                data, new_index = _matrix_join(self._data, other._data,
+                if other.empty:
+                    other_data = sparse.csr_matrix((1, other.shape[1]),
+                                                   dtype=other.data.dtype)
+                else:
+                    other_data = other._data
+
+                if self.empty:
+                    self_data = sparse.csr_matrix((1, self.shape[1]),
+                                                  dtype=self.data.dtype)
+                else:
+                    self_data = self._data
+
+                data, new_index = _matrix_join(self_data, other_data,
                                               self.index, other.index,
                                               how=how)
                 res = SparseFrame(data,

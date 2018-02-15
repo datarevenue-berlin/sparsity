@@ -1,7 +1,39 @@
+import toolz
+from dask.base import tokenize
+
+import sparsity.sparse_frame as sp
+import pandas as pd
+from dask.dataframe.multi import require, required
 from sparsity.dask.core import SparseFrame
 from functools import partial
 from dask.dataframe.core import is_broadcastable, _Frame
 from toolz import unique, merge_sorted
+
+
+
+def join_indexed_sparseframes(lhs, rhs, how='left'):
+    """ Join two partitioned sparseframes along their index """
+
+    (lhs, rhs), divisions, parts = align_partitions(lhs, rhs)
+    divisions, parts = require(divisions, parts, required[how])
+
+    left_empty = lhs._meta
+    right_empty = rhs._meta
+
+    name = 'join-indexed-' + tokenize(lhs, rhs, how)
+
+    dsk = dict()
+    for i, (a, b) in enumerate(parts):
+        if a is None and how in ('right', 'outer'):
+            a = left_empty
+        if b is None and how in ('left', 'outer'):
+            b = right_empty
+
+        dsk[(name, i)] = (sp.SparseFrame.join, a, b, 1, how)
+
+    meta = sp.SparseFrame.join(lhs._meta_nonempty, rhs._meta_nonempty, how=how)
+    return SparseFrame(toolz.merge(lhs.dask, rhs.dask, dsk),
+                       name, meta, divisions)
 
 
 def align_partitions(*dfs):
@@ -38,7 +70,7 @@ def align_partitions(*dfs):
 
     divisions = list(unique(merge_sorted(*[df.divisions for df in dfs1])))
     dfs2 = [df.repartition(divisions, force=True)
-            if isinstance(df, (_Frame, SparseFrame)) else df for df in dfs]
+            if isinstance(df, (SparseFrame)) else df for df in dfs]
 
     result = list()
     inds = [0 for df in dfs]

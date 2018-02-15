@@ -223,6 +223,57 @@ def test_assign_column():
     assert np.all(sf.todense() == f.assign(new=s))
 
 
+def test_repartition_divisions():
+    df = pd.DataFrame(np.identity(10))
+    dsf = dsp.from_pandas(df, npartitions=2)
+
+    dsf2 = dsf.repartition(divisions=[0,3,5,7,9])
+
+    assert isinstance(dsf2, dsp.SparseFrame)
+    assert dsf2.divisions == (0, 3, 5, 7, 9)
+
+    df2 = dsf2.compute().todense()
+    pdt.assert_frame_equal(df, df2)
+
+
+@pytest.mark.parametrize('start_part, end_part', [
+    (2, 4),
+    (3, 2),
+    (3, 3),
+])
+def test_repartition_n_divisions(start_part, end_part):
+    df = pd.DataFrame(np.identity(10))
+    dsf = dsp.from_pandas(df, npartitions=start_part)
+
+    dsf2 = dsf.repartition(npartitions=end_part)
+
+    assert isinstance(dsf2, dsp.SparseFrame)
+    assert dsf2.npartitions == end_part
+
+    df2 = dsf2.compute().todense()
+    pdt.assert_frame_equal(df, df2)
+
+
+@pytest.mark.parametrize('how', ['left', 'right', 'inner', 'outer'])
+def test_distributed_join(how):
+    left = pd.DataFrame(np.identity(10),
+                        index=np.arange(10),
+                        columns=list('ABCDEFGHIJ'))
+    right = pd.DataFrame(np.identity(10),
+                         index=np.arange(5, 15),
+                         columns=list('KLMNOPQRST'))
+    correct = left.join(right, how=how).fillna(0)
+
+    d_left = dsp.from_pandas(left, npartitions=2)
+    d_right = dsp.from_pandas(right, npartitions=2)
+
+    joined = d_left.join(d_right, how=how)
+
+    res = joined.compute().todense()
+
+    pdt.assert_frame_equal(correct, res)
+
+
 def test_from_ddf():
     ddf = dd.from_pandas(
         pd.DataFrame(np.random.rand(20, 4),
