@@ -63,6 +63,10 @@ def to_npz(sf, filename, block_size=None, storage_options=None):
     if not filename.endswith('.npz'):
         filename += '.npz'
 
+    _write_dict_npz(data, filename, block_size, storage_options)
+
+
+def _write_dict_npz(data, filename, block_size, storage_options):
     protocol = urlparse(filename).scheme or 'file'
     if protocol == 'file':
         with open(filename, 'wb') as fp:
@@ -90,13 +94,7 @@ def _save_remote(buffer, filename, block_size=None, storage_options=None):
 
 
 def read_npz(filename, storage_options=None):
-    if storage_options is None:
-        storage_options = {}
-    protocol = urlparse(filename).scheme or 'file'
-    open_f = _filesystems[protocol](**storage_options).open
-    fp = open_f(filename, 'rb')
-
-    loader = np.load(fp)
+    loader = _open_npz_archive(filename, storage_options)
     try:
         csr_mat = _load_csr(loader)
         idx = _load_idx_from_npz(loader)
@@ -104,6 +102,16 @@ def read_npz(filename, storage_options=None):
     finally:
         loader.close()
     return csr_mat, idx, cols
+
+
+def _open_npz_archive(filename, storage_options=None):
+    if storage_options is None:
+        storage_options = {}
+    protocol = urlparse(filename).scheme or 'file'
+    open_f = _filesystems[protocol](**storage_options).open
+    fp = open_f(filename, 'rb')
+    loader = np.load(fp)
+    return loader
 
 
 def _csr_to_dict(array):

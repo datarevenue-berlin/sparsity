@@ -24,6 +24,7 @@ from toolz import merge, remove, partition_all
 import sparsity as sp
 from sparsity.dask.indexing import _LocIndexer
 
+
 def _make_meta(inp):
     if isinstance(inp, sp.SparseFrame) and inp.empty:
         return inp
@@ -224,6 +225,11 @@ class SparseFrame(dask.base.DaskMethodsMixin):
                    aggregate=sp.SparseFrame.groupby_sum,
                    meta=meta, token=token, split_every=split_every,
                    split_out=split_out, split_out_setup=split_out_on_index)
+
+    def to_npz(self, filename, blocksize=None,
+               storage_options=None, compute=True):
+        from sparsity.dask.io import to_npz
+        to_npz(self, filename, blocksize, storage_options, compute)
 
     def __repr__(self):
         return \
