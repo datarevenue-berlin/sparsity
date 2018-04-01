@@ -180,7 +180,6 @@ class SparseFrame(dask.base.DaskMethodsMixin):
             self, other, how=how)
 
     def set_index(self, column=None, idx=None, level=None):
-        #TODO: add test
         if idx is not None:
             raise NotImplementedError('Only column or level supported')
         new_name = self._meta.index.names[level] if level else column
