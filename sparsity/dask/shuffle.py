@@ -1,7 +1,8 @@
 import math
 from operator import getitem
 
-from dask import base, delayed, sizeof
+from dask import base, delayed
+from dask.sizeof import sizeof
 from dask.base import tokenize
 from dask.dataframe.shuffle import shuffle_group_get, set_partitions_pre, \
     remove_nans, set_index_post_series

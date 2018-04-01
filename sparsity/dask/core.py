@@ -205,9 +205,10 @@ class SparseFrame(dask.base.DaskMethodsMixin):
         return self.map_partitions(sp.SparseFrame.rename, meta=_meta,
                                    columns=columns)
 
-    def sort_index(self,  npartitions=None, divisions=None):
+    def sort_index(self,  npartitions=None, divisions=None, **kwargs):
         from .shuffle import sort_index
-        return sort_index(self, npartitions=npartitions, divisions=None)
+        return sort_index(self, npartitions=npartitions,
+                          divisions=None, **kwargs)
 
     def groupby_sum(self, split_out=1, split_every=8):
         meta = self._meta

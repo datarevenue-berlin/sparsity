@@ -1,5 +1,6 @@
 import datetime as dt
 import os
+from uuid import uuid4
 
 import dask
 import dask.dataframe as dd
@@ -234,15 +235,20 @@ def test_assign_column():
     sf = dsf.compute()
     assert np.all(sf.todense() == f.assign(new=s))
 
+@pytest.mark.parametrize('arg_dict', [
+    dict(divisions=[0, 30, 50, 70, 99]),
+    dict(npartitions=6),
+    dict(npartitions=2),
+])
+def test_repartition_divisions(arg_dict):
+    df = pd.DataFrame(np.identity(100))
+    dsf = dsp.from_pandas(df, npartitions=4)
 
-def test_repartition_divisions():
-    df = pd.DataFrame(np.identity(10))
-    dsf = dsp.from_pandas(df, npartitions=2)
-
-    dsf2 = dsf.repartition(divisions=[0,3,5,7,9])
+    dsf2 = dsf.repartition(**arg_dict)
 
     assert isinstance(dsf2, dsp.SparseFrame)
-    assert dsf2.divisions == (0, 3, 5, 7, 9)
+    if 'divisions' in arg_dict:
+        assert tuple(dsf2.divisions) == tuple(arg_dict['divisions'])
 
     df2 = dsf2.compute().todense()
     pdt.assert_frame_equal(df, df2)
@@ -286,25 +292,31 @@ def test_distributed_join(how):
     pdt.assert_frame_equal(correct, res)
 
 @pytest.mark.parametrize('idx', [
-    list('ABCD'*25),
-    np.array(list('0123'*25)).astype(int),
-    np.array(list('0123'*25)).astype(float),
+    np.random.choice([uuid4() for i in range(1000)], size=10000),
+    np.random.randint(0, 10000, 10000),
+    np.random.randint(0, 10000, 10000).astype(float),
+    pd.date_range('01-01-1970', periods=10000, freq='s'),
 ])
 def test_groupby_sum(idx):
-    df = pd.DataFrame(dict(A=np.ones(100), B=np.ones(100)),
-                      index=idx)
+    df = pd.DataFrame(dict(A=np.ones(len(idx)), B=np.arange(len(idx))),
+                      index=idx, dtype=np.float)
     correct = df.groupby(level=0).sum()
     correct.sort_index(inplace=True)
 
-    spf = dsp.from_pandas(df, npartitions=2)
-    assert spf.npartitions == 2
+    spf = dsp.from_ddf(dd.from_pandas(df, npartitions=10, sort=False))
+    assert spf.npartitions == 10
     grouped = spf.groupby_sum(split_out=4)
+    grouped2 = spf.groupby_sum(split_out=12)
 
     assert grouped.npartitions == 4
-    res = grouped.compute().todense()
-    res.sort_index(inplace=True)
+    res1 = grouped.compute().todense()
+    res1.sort_index(inplace=True)
 
-    pdt.assert_frame_equal(res, correct)
+    assert grouped2.npartitions == 12
+    res2 = grouped2.compute().todense()
+    res2.sort_index(inplace=True)
+
+    pdt.assert_frame_equal(res1, correct)
 
 
 def test_from_ddf():
@@ -334,8 +346,6 @@ def test_sdf_sort_index():
         npartitions=4,
         sort=False,
     )
-    ddf2 = ddf.assign(idx=ddf.index).set_index('idx')
-    # ddf2.compute()
 
     dsf = dsp.from_ddf(ddf)
     dsf = dsf.sort_index()
@@ -345,3 +355,31 @@ def test_sdf_sort_index():
     res = dsf.compute()
     assert res.index.is_monotonic
     assert res.columns.tolist() == list('ABCD')
+
+
+def test_sdf_sort_index_auto_partition():
+    data = pd.DataFrame(np.random.rand(20000, 4),
+                        columns=list('ABCD'),
+                        index=np.random.choice(list(range(5000)), 20000))
+    ddf = dd.from_pandas(data,
+        npartitions=20,
+        sort=False,
+    )
+
+    dsf = dsp.from_ddf(ddf)
+    dsf = dsf.sort_index(npartitions='auto', partition_size=80000)
+
+    assert dsf.known_divisions
+    assert dsf.npartitions == 16
+
+    res = dsf.compute()
+    assert res.index.is_monotonic
+    assert res.columns.tolist() == list('ABCD')
+
+
+def test_get_partition(dsf):
+    correct = dsf.compute().todense()
+    parts = [dsf.get_partition(i).compute().todense()
+             for i in range(dsf.npartitions)]
+    res = pd.concat(parts, axis=0)
+    pdt.assert_frame_equal(res, correct)
