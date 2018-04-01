@@ -323,13 +323,31 @@ def test_sdf_sort_index():
         npartitions=4,
         sort=False,
     )
-    ddf2 = ddf.assign(idx=ddf.index).set_index('idx')
-    # ddf2.compute()
 
     dsf = dsp.from_ddf(ddf)
     dsf = dsf.sort_index()
 
     assert dsf.known_divisions
+
+    res = dsf.compute()
+    assert res.index.is_monotonic
+    assert res.columns.tolist() == list('ABCD')
+
+
+def test_sdf_sort_index_auto_partition():
+    data = pd.DataFrame(np.random.rand(20000, 4),
+                        columns=list('ABCD'),
+                        index=np.random.choice(list(range(5000)), 20000))
+    ddf = dd.from_pandas(data,
+        npartitions=20,
+        sort=False,
+    )
+
+    dsf = dsp.from_ddf(ddf)
+    dsf = dsf.sort_index(npartitions='auto', partition_size=80000)
+
+    assert dsf.known_divisions
+    assert dsf.npartitions == 16
 
     res = dsf.compute()
     assert res.index.is_monotonic
