@@ -173,7 +173,7 @@ class SparseFrame(dask.base.DaskMethodsMixin):
              rsuffix='', npartitions=None):
         from .multi import join_indexed_sparseframes
 
-        if isinstance(other, sp.SparseFrame):
+        if isinstance(other, sp.SparseFrame) and how in ['left', 'inner']:
             meta = sp.SparseFrame.join(self._meta_nonempty,
                                        other,
                                        how=how)
@@ -199,7 +199,6 @@ class SparseFrame(dask.base.DaskMethodsMixin):
     def groupby_sum(self, split_out=1, split_every=8):
         meta = self._meta
         if self.known_divisions:
-            #TODO: test this case
             res = self.map_partitions(sp.SparseFrame.groupby_sum,
                                       meta=meta)
             res.divisions = self.divisions
