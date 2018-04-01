@@ -352,3 +352,11 @@ def test_sdf_sort_index_auto_partition():
     res = dsf.compute()
     assert res.index.is_monotonic
     assert res.columns.tolist() == list('ABCD')
+
+
+def test_get_partition(dsf):
+    correct = dsf.compute().todense()
+    parts = [dsf.get_partition(i).compute().todense()
+             for i in range(dsf.npartitions)]
+    res = pd.concat(parts, axis=0)
+    pdt.assert_frame_equal(res, correct)
