@@ -13,16 +13,17 @@ from dask.dataframe.core import (Scalar, Series, _emulate, _extract_meta,
                                  no_default, partial, partial_by_order,
                                  split_evenly, check_divisions, hash_shard,
                                  split_out_on_index, Index)
-from dask.dataframe.groupby import _apply_chunk
-from dask.dataframe.utils import _nonempty_index, make_meta
+from dask.dataframe.utils import _nonempty_index
 from dask.dataframe.utils import make_meta as dd_make_meta
 from dask.delayed import Delayed
 from dask.optimize import cull
+from dask.utils import derived_from
 from scipy import sparse
 from toolz import merge, remove, partition_all
 
 import sparsity as sp
 from sparsity.dask.indexing import _LocIndexer
+
 
 def _make_meta(inp):
     if isinstance(inp, sp.SparseFrame) and inp.empty:
@@ -179,7 +180,10 @@ class SparseFrame(dask.base.DaskMethodsMixin):
         return join_indexed_sparseframes(
             self, other, how=how)
 
+    @derived_from(sp.SparseFrame)
     def set_index(self, column=None, idx=None, level=None):
+        if column is None and idx is None and level is None:
+            raise ValueError("Either column, idx or level should not be None")
         if idx is not None:
             raise NotImplementedError('Only column or level supported')
         new_name = self._meta.index.names[level] if level else column

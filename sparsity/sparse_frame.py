@@ -582,7 +582,24 @@ class SparseFrame(object):
         return SparseFrame(new_data, index=new_index, columns=self.columns)
 
     def set_index(self, column=None, idx=None, level=None, inplace=False):
-        """Set index from array, column or existing multi-index level."""
+        """Set index from array, column or existing multi-index level.
+
+        Parameters
+        ----------
+        column: str
+            set index from existing column in data.
+        idx: pd.Index, np.array
+            Set the index directly with a pandas index object or array
+        level: int
+            set index from a multiindex level. useful for groupbys.
+        inplace: bool
+            perform data transformation inplace
+
+        Returns
+        -------
+            sf: sp.SparseFrame \ None
+                the transformed sparse frame or None if inplace was True
+        """
         if column is None and idx is None and level is None:
             raise ValueError("Either column, idx or level should not be None")
         elif idx is not None:
