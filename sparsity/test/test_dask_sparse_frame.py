@@ -286,25 +286,26 @@ def test_distributed_join(how):
     pd.date_range('01-01-1970', periods=10000, freq='s'),
 ])
 def test_groupby_sum(idx):
-    df = pd.DataFrame(dict(A=np.ones(len(idx)), B=np.arange(len(idx))),
-                      index=idx, dtype=np.float)
-    correct = df.groupby(level=0).sum()
-    correct.sort_index(inplace=True)
+    for sorted in [True, False]:
+        df = pd.DataFrame(dict(A=np.ones(len(idx)), B=np.arange(len(idx))),
+                          index=idx, dtype=np.float)
+        correct = df.groupby(level=0).sum()
+        correct.sort_index(inplace=True)
 
-    spf = dsp.from_ddf(dd.from_pandas(df, npartitions=10, sort=False))
-    assert spf.npartitions == 10
-    grouped = spf.groupby_sum(split_out=4)
-    grouped2 = spf.groupby_sum(split_out=12)
+        spf = dsp.from_ddf(dd.from_pandas(df, npartitions=10, sort=sorted))
+        assert spf.npartitions == 10
+        grouped = spf.groupby_sum(split_out=4)
+        grouped2 = spf.groupby_sum(split_out=12)
 
-    assert grouped.npartitions == 4
-    res1 = grouped.compute().todense()
-    res1.sort_index(inplace=True)
+        assert grouped.npartitions == 4
+        res1 = grouped.compute().todense()
+        res1.sort_index(inplace=True)
 
-    assert grouped2.npartitions == 12
-    res2 = grouped2.compute().todense()
-    res2.sort_index(inplace=True)
+        assert grouped2.npartitions == 12
+        res2 = grouped2.compute().todense()
+        res2.sort_index(inplace=True)
 
-    pdt.assert_frame_equal(res1, correct)
+        pdt.assert_frame_equal(res1, correct)
 
 
 def test_from_ddf():
