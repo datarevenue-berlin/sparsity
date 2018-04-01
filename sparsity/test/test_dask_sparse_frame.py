@@ -222,15 +222,20 @@ def test_assign_column():
     sf = dsf.compute()
     assert np.all(sf.todense() == f.assign(new=s))
 
+@pytest.mark.parametrize('arg_dict', [
+    dict(divisions=[0, 30, 50, 70, 99]),
+    dict(npartitions=6),
+    dict(npartitions=2),
+])
+def test_repartition_divisions(arg_dict):
+    df = pd.DataFrame(np.identity(100))
+    dsf = dsp.from_pandas(df, npartitions=4)
 
-def test_repartition_divisions():
-    df = pd.DataFrame(np.identity(10))
-    dsf = dsp.from_pandas(df, npartitions=2)
-
-    dsf2 = dsf.repartition(divisions=[0,3,5,7,9])
+    dsf2 = dsf.repartition(**arg_dict)
 
     assert isinstance(dsf2, dsp.SparseFrame)
-    assert dsf2.divisions == (0, 3, 5, 7, 9)
+    if 'divisions' in arg_dict:
+        assert tuple(dsf2.divisions) == tuple(arg_dict['divisions'])
 
     df2 = dsf2.compute().todense()
     pdt.assert_frame_equal(df, df2)
