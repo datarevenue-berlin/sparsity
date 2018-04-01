@@ -20,7 +20,8 @@ dask.context.set_options(get=dask.local.get_sync)
 
 @pytest.fixture
 def dsf():
-    return dsp.from_pandas(pd.DataFrame(np.random.rand(10,2)),
+    return dsp.from_pandas(pd.DataFrame(np.random.rand(10,2),
+                                        columns=['A', 'B']),
                            npartitions=3)
 
 def test_from_pandas():
@@ -360,3 +361,9 @@ def test_sdf_sort_index():
     res = dsf.compute()
     assert res.index.is_monotonic
     assert res.columns.tolist() == list('ABCD')
+
+
+def test_rename(dsf):
+    dsf = dsf.rename(columns=lambda x: x + '<3')
+    res = dsf.compute()
+    assert all(['<3' in c for c in res.columns])

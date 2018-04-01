@@ -187,7 +187,6 @@ class SparseFrame(dask.base.DaskMethodsMixin):
             self, other, how=how)
 
     def rename(self, columns):
-        #TODO: add test
         _meta = self._meta.rename(columns=columns)
         return self.map_partitions(sp.SparseFrame.rename, meta=_meta,
                                    columns=columns)
