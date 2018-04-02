@@ -206,7 +206,7 @@ def test_read_npz():
         sf.iloc[50:75].to_npz(os.path.join(tmp, '3'))
         sf.iloc[75:].to_npz(os.path.join(tmp, '4'))
 
-        dsf = dsp.read_npz(os.path.join(tmp, '*.npz'))
+        dsf = dsp.read_npz(os.path.join(tmp, '*.npz'), read_divisions=True)
         sf = dsf.compute()
         assert dsf.known_divisions
     assert np.all(sf.data.toarray() == np.identity(100))
