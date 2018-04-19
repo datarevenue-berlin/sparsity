@@ -160,7 +160,7 @@ def write_npz_metadata(writes, divisions, paths, fn,
 
 def to_npz(sf: SparseFrame, path: str, block_size=None,
            storage_options=None, compute=True):
-    if not '*' in path:
+    if '*' not in path:
         raise ValueError('Path needs to contain "*" wildcard.')
 
     tmpl_func = path.replace('*', '{0:06d}').format
