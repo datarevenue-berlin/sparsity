@@ -125,7 +125,7 @@ def sort_index_post_series(df, index_name):
 
 
 def rearrange_by_index(df, npartitions=None, max_branch=None,
-                       shuffle='task'):
+                       shuffle='tasks'):
     if shuffle == 'tasks':
         return rearrange_by_index_tasks(df, max_branch, npartitions)
     else:
