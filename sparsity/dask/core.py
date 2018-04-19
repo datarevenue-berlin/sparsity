@@ -23,6 +23,7 @@ from toolz import merge, remove, partition_all
 import sparsity as sp
 from sparsity.dask.indexing import _LocIndexer
 
+
 def _make_meta(inp):
     if isinstance(inp, sp.SparseFrame) and inp.empty:
         return inp
