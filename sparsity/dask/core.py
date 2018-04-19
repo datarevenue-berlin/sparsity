@@ -13,8 +13,7 @@ from dask.dataframe.core import (Scalar, Series, _emulate, _extract_meta,
                                  no_default, partial, partial_by_order,
                                  split_evenly, check_divisions, hash_shard,
                                  split_out_on_index, Index)
-from dask.dataframe.groupby import _apply_chunk
-from dask.dataframe.utils import _nonempty_index, make_meta
+from dask.dataframe.utils import _nonempty_index
 from dask.dataframe.utils import make_meta as dd_make_meta
 from dask.delayed import Delayed
 from dask.optimize import cull
@@ -178,6 +177,15 @@ class SparseFrame(dask.base.DaskMethodsMixin):
 
         return join_indexed_sparseframes(
             self, other, how=how)
+
+    def groupby_sum(self, split_out=1, split_every=8):
+        meta = self._meta
+        token = 'groupby_sum'
+        return apply_concat_apply(self,
+                   chunk=sp.SparseFrame.groupby_sum,
+                   aggregate=sp.SparseFrame.groupby_sum,
+                   meta=meta, token=token, split_every=split_every,
+                   split_out=split_out, split_out_setup=split_out_on_index)
 
     def sort_index(self,  npartitions=None, divisions=None, **kwargs):
         """Sort the DataFrame index (row labels)
