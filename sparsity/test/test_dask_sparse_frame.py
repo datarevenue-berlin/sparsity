@@ -306,6 +306,7 @@ def test_groupby_sum(idx):
         res2.sort_index(inplace=True)
 
         pdt.assert_frame_equal(res1, correct)
+        pdt.assert_frame_equal(res2, correct)
 
 
 def test_from_ddf():
