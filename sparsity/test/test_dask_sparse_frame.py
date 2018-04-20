@@ -21,7 +21,8 @@ dask.context.set_options(get=dask.local.get_sync)
 
 @pytest.fixture
 def dsf():
-    return dsp.from_pandas(pd.DataFrame(np.random.rand(10,2)),
+    return dsp.from_pandas(pd.DataFrame(np.random.rand(10,2),
+                                        columns=['A', 'B']),
                            npartitions=3)
 
 def test_from_pandas():
@@ -321,6 +322,54 @@ def test_groupby_sum(idx):
         pdt.assert_frame_equal(res2, correct)
 
 
+@pytest.mark.parametrize('how', ['left', 'inner'])
+def test_distributed_join_shortcut(how):
+    left = pd.DataFrame(np.identity(10),
+                        index=np.arange(10),
+                        columns=list('ABCDEFGHIJ'))
+    right = pd.DataFrame(np.identity(10),
+                         index=np.arange(5, 15),
+                         columns=list('KLMNOPQRST'))
+    correct = left.join(right, how=how).fillna(0)
+
+    d_left = dsp.from_pandas(left, npartitions=2)
+    d_right = sp.SparseFrame(right)
+
+    joined = d_left.join(d_right, how=how)
+
+    res = joined.compute().todense()
+
+    pdt.assert_frame_equal(correct, res)
+
+
+@pytest.mark.parametrize('idx, sorted', [
+    (list('ABCD'*25), True),
+    (np.array(list('0123'*25)).astype(int), True),
+    (np.array(list('0123'*25)).astype(float), True),
+    (list('ABCD'*25), False),
+    (np.array(list('0123'*25)).astype(int), False),
+    (np.array(list('0123'*25)).astype(float), False),
+])
+def test_groupby_sum(idx, sorted):
+
+    df = pd.DataFrame(dict(A=np.ones(100), B=np.ones(100)),
+                      index=idx)
+    correct = df.groupby(level=0).sum()
+    correct.sort_index(inplace=True)
+
+    spf = dsp.from_pandas(df, npartitions=2)
+    if not sorted:
+        spf.divisions = [None] * (spf.npartitions + 1)
+    assert spf.npartitions == 2
+    grouped = spf.groupby_sum(split_out=3)
+
+    assert grouped.npartitions == 3
+    res = grouped.compute().todense()
+    res.sort_index(inplace=True)
+
+    pdt.assert_frame_equal(res, correct)
+
+
 def test_from_ddf():
     ddf = dd.from_pandas(
         pd.DataFrame(np.random.rand(20, 4),
@@ -385,3 +434,16 @@ def test_get_partition(dsf):
              for i in range(dsf.npartitions)]
     res = pd.concat(parts, axis=0)
     pdt.assert_frame_equal(res, correct)
+
+
+def test_set_index(clickstream):
+    ddf = dd.from_pandas(clickstream, npartitions=10)
+    dsf = one_hot_encode(ddf,
+                         categories={'page_id': list('ABCDE'),
+                                     'other_categorical': list('FGHIJ')},
+                         order=['other_categorical', 'page_id'],
+                         index_col=['index', 'id'])
+    dense = dsf.compute().set_index(level=1).todense()
+    res = dsf.set_index(level=1).compute().todense()
+
+    pdt.assert_frame_equal(dense, res)

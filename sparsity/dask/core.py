@@ -18,6 +18,7 @@ from dask.dataframe.utils import _nonempty_index, make_meta
 from dask.dataframe.utils import make_meta as dd_make_meta
 from dask.delayed import Delayed
 from dask.optimize import cull
+from dask.utils import derived_from
 from scipy import sparse
 from toolz import merge, remove, partition_all
 
@@ -174,7 +175,7 @@ class SparseFrame(dask.base.DaskMethodsMixin):
              rsuffix='', npartitions=None):
         from .multi import join_indexed_sparseframes
 
-        if isinstance(other, sp.SparseFrame):
+        if isinstance(other, sp.SparseFrame) and how in ['left', 'inner']:
             meta = sp.SparseFrame.join(self._meta_nonempty,
                                        other,
                                        how=how)
@@ -187,46 +188,6 @@ class SparseFrame(dask.base.DaskMethodsMixin):
         return join_indexed_sparseframes(
             self, other, how=how)
 
-    def set_index(self, column=None, idx=None, level=None):
-        #TODO: add test
-        if idx is not None:
-            raise NotImplementedError('Only column or level supported')
-        new_name = self._meta.index.names[level] if level else column
-        meta = self._meta.set_index(pd.Index([], name=new_name))
-        res = self.map_partitions(sp.SparseFrame.set_index, meta=meta,
-                                  column=column, idx=idx, level=level)
-        res.divisions = [None] * ( self.npartitions + 1)
-        return res
-
-
-    def rename(self, columns):
-        #TODO: add test
-        _meta = self._meta.rename(columns=columns)
-        return self.map_partitions(sp.SparseFrame.rename, meta=_meta,
-                                   columns=columns)
-
-    def sort_index(self,  npartitions=None, divisions=None, **kwargs):
-        from .shuffle import sort_index
-        return sort_index(self, npartitions=npartitions,
-                          divisions=None, **kwargs)
-
-    def groupby_sum(self, split_out=1, split_every=8):
-        meta = self._meta
-        if self.known_divisions:
-            #TODO: test this case
-            res = self.map_partitions(sp.SparseFrame.groupby_sum,
-                                      meta=meta)
-            res.divisions = self.divisions
-            if split_out and split_out != self.npartitions:
-                res = res.repartition(npartitions=split_out)
-            return res
-        token = 'groupby_sum'
-        return apply_concat_apply(self,
-                   chunk=sp.SparseFrame.groupby_sum,
-                   aggregate=sp.SparseFrame.groupby_sum,
-                   meta=meta, token=token, split_every=split_every,
-                   split_out=split_out, split_out_setup=split_out_on_index)
-
     def to_npz(self, filename, blocksize=None,
                storage_options=None, compute=True):
         from sparsity.dask.io import to_npz
@@ -234,6 +195,13 @@ class SparseFrame(dask.base.DaskMethodsMixin):
 
     def groupby_sum(self, split_out=1, split_every=8):
         meta = self._meta
+        if self.known_divisions:
+            res = self.map_partitions(sp.SparseFrame.groupby_sum,
+                                      meta=meta)
+            res.divisions = self.divisions
+            if split_out and split_out != self.npartitions:
+                res = res.repartition(npartitions=split_out)
+            return res
         token = 'groupby_sum'
         return apply_concat_apply(self,
                    chunk=sp.SparseFrame.groupby_sum,
@@ -283,14 +251,18 @@ class SparseFrame(dask.base.DaskMethodsMixin):
         return sort_index(self, npartitions=npartitions,
                           divisions=None, **kwargs)
 
-    def groupby_sum(self, split_out=1, split_every=8):
-        meta = self._meta
-        token = 'groupby_sum'
-        return apply_concat_apply(self,
-                   chunk=sp.SparseFrame.groupby_sum,
-                   aggregate=sp.SparseFrame.groupby_sum,
-                   meta=meta, token=token, split_every=split_every,
-                   split_out=split_out, split_out_setup=split_out_on_index)
+    @derived_from(sp.SparseFrame)
+    def set_index(self, column=None, idx=None, level=None):
+        if column is None and idx is None and level is None:
+            raise ValueError("Either column, idx or level should not be None")
+        if idx is not None:
+            raise NotImplementedError('Only column or level supported')
+        new_name = self._meta.index.names[level] if level else column
+        meta = self._meta.set_index(pd.Index([], name=new_name))
+        res = self.map_partitions(sp.SparseFrame.set_index, meta=meta,
+                                  column=column, idx=idx, level=level)
+        res.divisions = [None] * ( self.npartitions + 1)
+        return res
 
     def __repr__(self):
         return \
