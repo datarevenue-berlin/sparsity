@@ -15,11 +15,6 @@ from sparsity.io import _csr_to_dict
 
 from .conftest import tmpdir
 
-try:
-    import traildb
-except (ImportError, OSError):
-    traildb = False
-
 
 @contextmanager
 def mock_s3_fs(bucket, data=None):
@@ -583,19 +578,6 @@ def test_csr_one_hot_series_too_little_categories(sampledata):
                   'Thursday', 'Friday']
     with pytest.raises(ValueError):
         sparse_one_hot(sampledata(49), categories={'weekday': categories})
-
-
-@pytest.mark.skipif(traildb is False, reason="TrailDB not installed")
-def test_read_traildb(testdb):
-    res = SparseFrame.read_traildb(testdb, 'action')
-    assert res.shape == (9, 3)
-
-
-@pytest.mark.skipif(traildb is False, reason="TrailDB not installed")
-def test_add_traildb(testdb):
-    simple = SparseFrame.read_traildb(testdb, 'action')
-    doubled = simple.add(simple)
-    assert np.all(doubled.data.todense() == simple.data.todense() * 2)
 
 
 def test_npz_io(complex_example):

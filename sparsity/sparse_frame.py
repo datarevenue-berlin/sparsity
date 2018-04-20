@@ -17,11 +17,6 @@ except ImportError:
 from sparsity.io import to_npz, read_npz, _just_read_array
 from scipy import sparse
 
-try:
-    from sparsity.io import traildb_to_coo
-    trail_db = True
-except:
-    trail_db = False
 from sparsity.indexing import _CsrILocationIndexer, _CsrLocIndexer
 
 
@@ -506,19 +501,6 @@ class SparseFrame(object):
         return SparseFrame(self._data[key,:],
                            index=new_idx,
                            columns=self.columns)
-
-    @classmethod
-    def read_traildb(cls, file, field, ts_unit='s'):
-        if not trail_db:
-            raise ImportError("Traildb could not be imported")
-        uuids, timestamps, cols, coo = traildb_to_coo(file, field)
-        uuids = np.asarray([uuid.UUID(bytes=x.tobytes()) for x in
-                            uuids])
-        index = pd.MultiIndex.from_arrays \
-            ([pd.CategoricalIndex(uuids),
-              pd.to_datetime(timestamps, unit=ts_unit,)],
-             names=('uuid', 'timestamp'))
-        return cls(coo.tocsr(), index=index, columns=cols)
 
     def assign(self, **kwargs):
         sf = self
