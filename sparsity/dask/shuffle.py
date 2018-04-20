@@ -1,7 +1,8 @@
 import math
 from operator import getitem
 
-from dask import base, delayed, sizeof
+from dask import base, delayed
+from dask.sizeof import sizeof
 from dask.base import tokenize
 from dask.dataframe.shuffle import shuffle_group_get, set_partitions_pre, \
     remove_nans, set_index_post_series
@@ -124,7 +125,7 @@ def sort_index_post_series(df, index_name):
 
 
 def rearrange_by_index(df, npartitions=None, max_branch=None,
-                       shuffle='task'):
+                       shuffle='tasks'):
     if shuffle == 'tasks':
         return rearrange_by_index_tasks(df, max_branch, npartitions)
     else:

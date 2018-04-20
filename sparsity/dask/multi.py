@@ -64,7 +64,7 @@ def align_partitions(*dfs):
         raise ValueError("dfs contains no DataFrame and Series")
     if not all(df.known_divisions for df in dfs1):
         raise ValueError("Not all divisions are known, can't align "
-                         "partitions. Please use `set_index` or "
+                         "partitions. Please use `sort_index` or "
                          "`set_partition` to set the index.")
 
     divisions = list(unique(merge_sorted(*[df.divisions for df in dfs1])))

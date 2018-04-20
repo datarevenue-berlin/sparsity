@@ -13,7 +13,8 @@ from dask.dataframe.core import (Scalar, Series, _emulate, _extract_meta,
                                  no_default, partial, partial_by_order,
                                  split_evenly, check_divisions, hash_shard,
                                  split_out_on_index, Index)
-from dask.dataframe.utils import _nonempty_index
+from dask.dataframe.groupby import _apply_chunk
+from dask.dataframe.utils import _nonempty_index, make_meta
 from dask.dataframe.utils import make_meta as dd_make_meta
 from dask.delayed import Delayed
 from dask.optimize import cull
@@ -174,11 +175,81 @@ class SparseFrame(dask.base.DaskMethodsMixin):
              rsuffix='', npartitions=None):
         from .multi import join_indexed_sparseframes
 
+        if isinstance(other, sp.SparseFrame) and how in ['left', 'inner']:
+            meta = sp.SparseFrame.join(self._meta_nonempty,
+                                       other,
+                                       how=how)
+            join_func = partial(sp.SparseFrame.join, other=other,
+                                how=how)
+            return self.map_partitions(join_func, meta=meta, name='simplejoin')
         if not isinstance(other, (SparseFrame)):
             raise ValueError('other must be SparseFrame')
 
         return join_indexed_sparseframes(
             self, other, how=how)
+
+    def rename(self, columns):
+        _meta = self._meta.rename(columns=columns)
+        return self.map_partitions(sp.SparseFrame.rename, meta=_meta,
+                                   columns=columns)
+
+    def groupby_sum(self, split_out=1, split_every=8):
+        meta = self._meta
+        if self.known_divisions:
+            res = self.map_partitions(sp.SparseFrame.groupby_sum,
+                                      meta=meta)
+            res.divisions = self.divisions
+            if split_out and split_out != self.npartitions:
+                res = res.repartition(npartitions=split_out)
+            return res
+        token = 'groupby_sum'
+        return apply_concat_apply(self,
+                   chunk=sp.SparseFrame.groupby_sum,
+                   aggregate=sp.SparseFrame.groupby_sum,
+                   meta=meta, token=token, split_every=split_every,
+                   split_out=split_out, split_out_setup=split_out_on_index)
+
+    def sort_index(self,  npartitions=None, divisions=None, **kwargs):
+        """Sort the DataFrame index (row labels)
+        This realigns the dataset to be sorted by the index.  This can have a
+        significant impact on performance, because joins, groupbys, lookups, etc.
+        are all much faster on that column.  However, this performance increase
+        comes with a cost, sorting a parallel dataset requires expensive shuffles.
+        Often we ``sort_index`` once directly after data ingest and filtering and
+        then perform many cheap computations off of the sorted dataset.
+        This function operates exactly like ``pandas.sort_index`` except with
+        different performance costs (it is much more expensive).  Under normal
+        operation this function does an initial pass over the index column to
+        compute approximate qunatiles to serve as future divisions.  It then passes
+        over the data a second time, splitting up each input partition into several
+        pieces and sharing those pieces to all of the output partitions now in
+        sorted order.
+        In some cases we can alleviate those costs, for example if your dataset is
+        sorted already then we can avoid making many small pieces or if you know
+        good values to split the new index column then we can avoid the initial
+        pass over the data.  For example if your new index is a datetime index and
+        your data is already sorted by day then this entire operation can be done
+        for free.  You can control these options with the following parameters.
+
+        Parameters
+        ----------
+        npartitions: int, None, or 'auto'
+            The ideal number of output partitions.   If None use the same as
+            the input.  If 'auto' then decide by memory use.
+        divisions: list, optional
+            Known values on which to separate index values of the partitions.
+            See http://dask.pydata.org/en/latest/dataframe-design.html#partitions
+            Defaults to computing this with a single pass over the data. Note
+            that if ``sorted=True``, specified divisions are assumed to match
+            the existing partitions in the data. If this is untrue, you should
+            leave divisions empty and call ``repartition`` after ``set_index``.
+        partition_size: int, optional
+            if npartitions is set to auto repartition the dataframe into
+            partitions of this size.
+        """
+        from .shuffle import sort_index
+        return sort_index(self, npartitions=npartitions,
+                          divisions=None, **kwargs)
 
     @derived_from(sp.SparseFrame)
     def set_index(self, column=None, idx=None, level=None):
@@ -192,20 +263,6 @@ class SparseFrame(dask.base.DaskMethodsMixin):
                                   column=column, idx=idx, level=level)
         res.divisions = [None] * ( self.npartitions + 1)
         return res
-
-
-    def sort_index(self,  npartitions=None, divisions=None):
-        from .shuffle import sort_index
-        return sort_index(self, npartitions=npartitions, divisions=None)
-
-    def groupby_sum(self, split_out=1, split_every=8):
-        meta = self._meta
-        token = 'groupby_sum'
-        return apply_concat_apply(self,
-                   chunk=sp.SparseFrame.groupby_sum,
-                   aggregate=sp.SparseFrame.groupby_sum,
-                   meta=meta, token=token, split_every=split_every,
-                   split_out=split_out, split_out_setup=split_out_on_index)
 
     def __repr__(self):
         return \
@@ -537,9 +594,9 @@ def elemwise(op, *args, **kwargs):
     return SparseFrame(dsk, _name, meta, divisions)
 
 
-def map_partitions(func, ddf, meta, **kwargs):
+def map_partitions(func, ddf, meta, name=None, **kwargs):
     dsk = {}
-    name = func.__name__
+    name = name or func.__name__
     token = tokenize(func, meta, **kwargs)
     name = '{0}-{1}'.format(name, token)
 
