@@ -474,9 +474,22 @@ class SparseFrame(object):
         return SparseFrame(data, index=index, columns=self.columns)
 
     def fillna(self, value):
-        """Replace NaN values in explicitly stored data with `value`."""
+        """Replace NaN values in explicitly stored data with `value`.
+
+        Parameters
+        ----------
+        value: scalar
+            Value to use to fill holes (e.g. 0). If 0 is choosen
+            new matrix will have these values eliminated.
+
+        Returns
+        -------
+            filled: SparseFrame
+        """
         _data = self._data.copy()
         _data.data[np.isnan(self._data.data)] = value
+        if value == 0:
+            _data.eliminate_zeros()
         return SparseFrame(data=_data[:-1, :],
                            index=self.index, columns=self.columns)
 
@@ -639,7 +652,21 @@ class SparseFrame(object):
         return SparseFrame(new_data, index=self.index, columns=new_cols)
 
     def drop(self, labels, axis=0):
-        """Drop label(s) from given axis. Currently works only for columns.
+        """Return new object with labels in requested axis removed.
+
+        Currently works only for columns.
+
+        Parameters
+        ----------
+        labels: single label or list like
+            Index or column labels to drop.
+        axis: int
+            Whether to drop labels from the index
+            (0 / ‘index’) or columns (1 / ‘columns’)
+
+        Returns
+        -------
+            dropped: SparseFrame
         """
         if not isinstance(labels, (list, tuple, set)):
             labels = [labels]
@@ -720,7 +747,23 @@ class SparseFrame(object):
 
     @classmethod
     def read_npz(cls, filename, storage_options=None):
-        """"Read from numpy npz format."""
+        """Read from numpy npz format.
+
+        Reads the sparse frame from a npz archive.
+        Supports reading npz archives from remote locations
+        with GCSFS and S3FS.
+
+        Parameters
+        ----------
+        filename: str
+            path or uri to location
+        storage_options: dict
+            further options for the underlying filesystem.
+
+        Returns
+        -------
+            sf: SparseFrame
+        """
         return cls(*read_npz(filename, storage_options))
 
     @property
