@@ -41,8 +41,23 @@ def _is_empty(data):
     return False
 
 class SparseFrame(object):
-    """
-    Simple sparse table based on scipy.sparse.csr_matrix
+    """ Two dimensional size-mutable, homogenous tabular data structure with
+    labeled axes (rows and columns). Operations align on both column and row
+    labels. Can be thought of a scipy.sparse.csr matrix with row and columns
+    labels
+
+    Parameters
+    ----------
+
+    data: scipy sparse matrix, numpy ndarray, pandas.DataFrame
+        data to initalize matrix with. Can be one of above types, or
+        anything accepted by sparse.csr_matrix along with the correct kwargs.
+    index: pd.Index or array-like
+        Index to use for resulting frame. Will default to RangeIndex if
+        no indexing information part of input data and no index provided
+    columns : pd.Index or array-like
+        Column labels to use for resulting frame. Will default to
+        RangeIndex (0, 1, 2, ..., n) if no column labels are provided
     """
 
     __slots__ = ["_index", "_columns", "_data", "shape",
@@ -105,9 +120,21 @@ class SparseFrame(object):
             self._init_csr(sparse_data)
 
     def toarray(self):
+        """Convert data into a numpy array loosing label information."""
         return self.todense(pandas=False)
 
     def todense(self, pandas=True):
+        """ Convert data into dense represenation.
+
+        Parameters
+        ----------
+        pandas: bool, optional
+            convert into a pandas.DataFrame else into a simple numpy array.
+
+        Returns
+        -------
+            dense: pd.DataFrame, numpy array
+        """
         if not self.empty:
             dense = np.asarray(self.data.toarray())
         else:
@@ -129,7 +156,7 @@ class SparseFrame(object):
                 dense = pd.DataFrame(dense.reshape(1, -1), index=self.index,
                                      columns=self.columns)
             else:
-                # need to copy as broadcast_to return read_only array
+                # need to copy, as broadcast_to return read_only array
                 idx = np.broadcast_to(self.index, dense.shape[0])\
                      .copy()
                 dense = pd.DataFrame(dense, index=idx,
@@ -155,18 +182,23 @@ class SparseFrame(object):
             return self._columns
 
     def sum(self, *args, **kwargs):
+        """Sum elements."""
         return self.data.sum(*args, **kwargs)
 
     def mean(self, *args, **kwargs):
+        """Calculate mean(s)."""
         return self.data.mean(*args, **kwargs)
 
     def max(self, *args, **kwargs):
+        """Find maximum element(s)."""
         return self.data.max(*args, **kwargs)
 
     def min(self, *args, **kwargs):
+        """Find minimum element(s)"""
         return self.data.min(*args, **kwargs)
 
     def copy(self, *args, deep=True, **kwargs):
+        """Copy this datastructure"""
         if deep:
             return SparseFrame(self.data.copy(*args, **kwargs),
                                self.index.copy(*args, **kwargs),
@@ -197,6 +229,7 @@ class SparseFrame(object):
         return SparseFrame(data, self.index, self.columns)
 
     def nnz(self):
+        """Number oif nonzero elements."""
         return self.data.nnz
 
     def take(self, idx, axis=0, **kwargs):
@@ -226,14 +259,32 @@ class SparseFrame(object):
 
     @property
     def index(self):
+        """ Return index labels
+
+        Returns
+        -------
+            index: pd.Index
+        """
         return self._index
 
     @property
     def columns(self):
+        """ Return column labels
+
+        Returns
+        -------
+            index: pd.Index
+        """
         return self._columns
 
     @property
     def data(self):
+        """ Return data matrix
+
+        Returns
+        -------
+            data: scipy.spar.csr_matrix
+        """
         if self.empty:
             return self._data
         return self._data[:-1,:]
@@ -243,6 +294,25 @@ class SparseFrame(object):
         return self.groupby_sum(by, level)
 
     def groupby_agg(self, by=None, level=None, agg_func=None):
+        """ Aggregate data using callable.
+
+        Parameters
+        ----------
+        by: array-like, string
+            grouping array or grouping column as string
+        level: int
+            which level from index to use if multiindex
+        agg_func: callable
+            Function which are applied to groups. Should
+            work on scipy.sparse_csr_matrizes and return
+            a scalar, as results will be fit into a new
+            csr_matrix.
+
+        Returns
+        -------
+            sf: SparseFrame
+                aggregated result
+        """
         by = self._get_groupby_col(by, level)
         groups = pd.Index(np.arange(self.shape[0])).groupby(by)
         res = sparse.csr_matrix((len(groups), self.shape[1]))
@@ -387,6 +457,7 @@ class SparseFrame(object):
 
     @property
     def values(self):
+        """CSR Matrix represenation of frame"""
         return self.data
 
     def sort_index(self):
@@ -521,6 +592,22 @@ class SparseFrame(object):
         return cls(coo.tocsr(), index=index, columns=cols)
 
     def assign(self, **kwargs):
+        """ Assign new columns to a DataFrame,
+        returning a new object (a copy) with all the original
+        columns in addition to the new ones.
+
+        Parameters
+        ----------
+        kwargs: keyword, value pairs
+            keywords are the column names.
+            values will be assigned to the given column name.
+
+        Returns
+        -------
+            sf: SparseFrame
+                a new SparseFrame with new columns in addition to
+                all existing columns
+        """
         sf = self
         for key, value in kwargs.items():
             sf = sf._single_assign(key, value)
@@ -667,7 +754,7 @@ class SparseFrame(object):
 
         Returns
         -------
-        reindexed: SparseFrame
+            reindexed: SparseFrame
         """
 
         if labels is not None and index is None and columns is None:
@@ -710,7 +797,7 @@ class SparseFrame(object):
 
         Returns
         -------
-        reindexed: SparseFrame
+            reindexed: SparseFrame
         """
         if method is not None \
                 or not copy \
