@@ -229,7 +229,7 @@ class SparseFrame(object):
         return SparseFrame(data, self.index, self.columns)
 
     def nnz(self):
-        """Number oif nonzero elements."""
+        """Number of nonzero elements."""
         return self.data.nnz
 
     def take(self, idx, axis=0, **kwargs):
@@ -296,6 +296,8 @@ class SparseFrame(object):
     def groupby_agg(self, by=None, level=None, agg_func=None):
         """ Aggregate data using callable.
 
+        The by and level arguments are mutually exclusive.
+
         Parameters
         ----------
         by: array-like, string
@@ -304,7 +306,7 @@ class SparseFrame(object):
             which level from index to use if multiindex
         agg_func: callable
             Function which are applied to groups. Should
-            work on scipy.sparse_csr_matrizes and return
+            work on scipy.sparse_csr_matrices and return
             a scalar, as results will be fit into a new
             csr_matrix.
 
@@ -317,9 +319,9 @@ class SparseFrame(object):
         groups = pd.Index(np.arange(self.shape[0])).groupby(by)
         res = sparse.csr_matrix((len(groups), self.shape[1]))
         new_idx = []
-        for i, (name, indizes) in enumerate(groups.items()):
-            new_idx.append(self.index.values[indizes[0]])
-            res[i] = agg_func(self.data[indizes.values,:])
+        for i, (name, indices) in enumerate(groups.items()):
+            new_idx.append(self.index.values[indices[0]])
+            res[i] = agg_func(self.data[indices.values,:])
         return SparseFrame(res, index=new_idx)
 
     def groupby_sum(self, by=None, level=0):
@@ -327,7 +329,9 @@ class SparseFrame(object):
         Optimized sparse groupby sum aggregation.
 
         Simple operation using sparse matrix multiplication.
-        Expects result to be sparse aswell.
+        Expects result to be sparse as well.
+
+        The by and level arguments are mutually exclusive.
 
         Parameters
         ----------
