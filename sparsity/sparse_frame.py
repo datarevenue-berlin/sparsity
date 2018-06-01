@@ -86,8 +86,8 @@ class SparseFrame(object):
 
         # register indexers
         self.ndim = 2
-        self.iloc = _CsrILocationIndexer(self, 'iloc')
-        self.loc = _CsrLocIndexer(self, 'loc')
+        self.iloc = _CsrILocationIndexer(name='iloc', obj=self)
+        self.loc = _CsrLocIndexer(name='loc', obj=self)
 
     def _init_values(self, data, kwargs):
         if isinstance(data, pd.DataFrame):
