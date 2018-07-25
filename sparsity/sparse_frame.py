@@ -1,4 +1,5 @@
 # coding=utf-8
+import functools
 import traceback
 import uuid
 import warnings
@@ -22,7 +23,8 @@ try:
     trail_db = True
 except:
     trail_db = False
-from sparsity.indexing import _CsrILocationIndexer, _CsrLocIndexer
+from sparsity.indexing import _CsrILocationIndexer, _CsrLocIndexer, \
+    get_indexers_list
 
 
 def _is_empty(data):
@@ -44,9 +46,6 @@ class SparseFrame(object):
     """
     Simple sparse table based on scipy.sparse.csr_matrix
     """
-
-    __slots__ = ["_index", "_columns", "_data", "shape",
-                 'ndim', 'iloc', 'loc', 'empty']
 
     def __init__(self, data, index=None, columns=None, **kwargs):
         if len(data.shape) > 2:
@@ -86,8 +85,14 @@ class SparseFrame(object):
 
         # register indexers
         self.ndim = 2
-        self.iloc = _CsrILocationIndexer(self, 'iloc')
-        self.loc = _CsrLocIndexer(self, 'loc')
+
+    @classmethod
+    def _create_indexer(cls, name, indexer):
+        """Create an indexer like _name in the class."""
+        if getattr(cls, name, None) is None:
+            # TODO when switching to pandas make kwarg name argument positional
+            _indexer = functools.partial(indexer, name=name)
+            setattr(cls, name, property(_indexer, doc=indexer.__doc__))
 
     def _init_values(self, data, kwargs):
         if isinstance(data, pd.DataFrame):
@@ -222,7 +227,10 @@ class SparseFrame(object):
     def _xs(self, key, *args, **kwargs):
         """Used for label based indexing."""
         loc = self.index.get_loc(key)
-        return SparseFrame(self.data[loc], index=[key], columns=self.columns)
+        new_data = self.data[loc]
+        return SparseFrame(new_data,
+                           index=[key] * new_data.shape[0],
+                           columns=self.columns)
 
     @property
     def index(self):
@@ -685,6 +693,7 @@ class SparseFrame(object):
             raise ValueError('Label parameter is mutually exclusive '
                              'with both index or columns')
 
+
     def reindex_axis(self, labels, axis=0, method=None,
                      level=None, copy=True, limit=None, fill_value=0):
         """Conform SparseFrame to new index.
@@ -923,3 +932,6 @@ def _check_categories_order(categories1, categories2, categorical_column_name,
                 mismatch_type=mismatch_type
             )
         )
+
+for _name, _indexer in get_indexers_list():
+    SparseFrame._create_indexer(_name, _indexer)

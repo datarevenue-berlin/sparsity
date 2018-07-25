@@ -202,8 +202,8 @@ def test_loc_multi_index(sf_midx, sf_midx_int):
     assert np.all(sf_midx.loc[dt_slice].data.todense() ==
                   np.identity(5)[:3])
 
-    assert np.all(sf_midx_int.loc[1].todense() == sf_midx.data[:4,:])
-    assert np.all(sf_midx_int.loc[0].todense() == sf_midx.data[4, :])
+    assert np.all(sf_midx_int.loc[1].todense().values == sf_midx.data[:4,:])
+    assert np.all(sf_midx_int.loc[0].todense().values == sf_midx.data[4, :])
 
 
 def test_set_index(sf_midx):
@@ -896,3 +896,13 @@ def test_empty_elemwise():
 
     with pytest.raises(ValueError):
         res = sf.add(sf_empty, fill_value=None)
+
+
+def test_loc_duplicate_index():
+    sf = SparseFrame(np.identity(5),
+                     columns=list('UUXYZ'),
+                     index=list('AAABB'))
+    assert len(sf.loc['A'].index) == 3
+    assert len(sf.loc['B'].index) == 2
+    assert np.all(sf.loc['A'].todense().values == np.identity(5)[:3])
+    assert np.all(sf.loc['B'].todense().values == np.identity(5)[3:])
