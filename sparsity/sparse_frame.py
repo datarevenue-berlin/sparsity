@@ -227,13 +227,21 @@ class SparseFrame(object):
         """
         return self.take(*args, **kwargs)
 
-    def _xs(self, key, *args, **kwargs):
+    def _xs(self, key, *args, axis=0, **kwargs):
         """Used for label based indexing."""
-        loc = self.index.get_loc(key)
-        new_data = self.data[loc]
-        return SparseFrame(new_data,
-                           index=[key] * new_data.shape[0],
-                           columns=self.columns)
+        if axis == 0:
+            loc = self.index.get_loc(key)
+            new_data = self.data[loc]
+            return SparseFrame(new_data,
+                               index=[key] * new_data.shape[0],
+                               columns=self.columns)
+        else:
+            loc = self.columns.get_loc(key)
+            new_data = self.data[:, loc]
+            return SparseFrame(new_data,
+                               columns=[key] * new_data.shape[1],
+                               index=self.index)
+
 
     @property
     def index(self):
@@ -583,7 +591,10 @@ class SparseFrame(object):
     def __getitem__(self, item):
         if not isinstance(item, (tuple, list)):
             item = [item]
-        return self.reindex_axis(item, axis=1)
+        if item is not None and len(item) > 0:
+            return self.reindex_axis(item, axis=1)
+        else:
+            return self
 
     def dropna(self):
         """Drop nans from index."""
@@ -620,7 +631,7 @@ class SparseFrame(object):
                 isinstance(self._index, pd.MultiIndex):
             new_idx = self.index.get_level_values(level)
         elif column is not None:
-            new_idx = np.asarray(self[column].data.todense()).reshape(-1)
+            new_idx = np.asarray(self.loc[:, column].data.todense()).reshape(-1)
 
         if inplace:
             self._index = _ensure_index(new_idx)
