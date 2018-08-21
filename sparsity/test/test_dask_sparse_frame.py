@@ -234,7 +234,8 @@ def test_assign_column():
     dsf = dsf.assign(new=ds)
     assert dsf._meta.empty
     sf = dsf.compute()
-    assert np.all(sf.todense() == f.assign(new=s))
+    assert np.all((sf.todense() == f.assign(new=s)).values)
+
 
 @pytest.mark.parametrize('arg_dict', [
     dict(divisions=[0, 30, 50, 70, 99]),
