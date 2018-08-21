@@ -655,6 +655,30 @@ class SparseFrame(object):
             raise ValueError('No axis named {} for {}'
                              .format(axis, self.__class__))
 
+    def _reindex_with_indexers(self, reindexers, **kwargs):
+        """allow_dups indicates an internal call here """
+
+        # reindex doing multiple operations on different axes if indicated
+        new_data = self.copy()
+        for axis in sorted(reindexers.keys()):
+            index, indexer = reindexers[axis]
+
+            if index is None:
+                continue
+
+            if axis == 0:
+                new_mat = new_data.data[indexer, :]
+                new_data = SparseFrame(new_mat, index=index,
+                                       columns=self.columns)
+            elif axis == 1:
+                new_mat = new_data.data[:, indexer]
+                new_data = SparseFrame(new_mat, columns=index,
+                                       index=self.index)
+            else:
+                raise ValueError('Only supported aces are 0 and 1.')
+
+        return new_data
+
     def reindex(self, labels=None, index=None, columns=None, axis=None,
                 *args, **kwargs):
         """Conform SparseFrame to new index.
@@ -692,7 +716,6 @@ class SparseFrame(object):
         else:
             raise ValueError('Label parameter is mutually exclusive '
                              'with both index or columns')
-
 
     def reindex_axis(self, labels, axis=0, method=None,
                      level=None, copy=True, limit=None, fill_value=0):
