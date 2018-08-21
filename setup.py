@@ -29,7 +29,7 @@ setup(
     packages=packages,
     cmdclass=versioneer.get_cmdclass(),
     install_requires=[
-                        'pandas>=0.19.0,<0.23.0',
+                        'pandas>=0.19.0',
                         'scipy>=0.18.1',
                         'numpy>=1.12.0',
                         's3fs>=0.1.0'
