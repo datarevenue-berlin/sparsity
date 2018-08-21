@@ -91,7 +91,7 @@ class SparseFrame(object):
         """Create an indexer like _name in the class."""
         if getattr(cls, name, None) is None:
             # TODO when switching to pandas make kwarg name argument positional
-            _indexer = functools.partial(indexer, name=name)
+            _indexer = functools.partial(indexer, name)
             setattr(cls, name, property(_indexer, doc=indexer.__doc__))
 
     def _init_values(self, data, kwargs):
