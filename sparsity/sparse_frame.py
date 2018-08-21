@@ -90,7 +90,7 @@ class SparseFrame(object):
     def _create_indexer(cls, name, indexer):
         """Create an indexer like _name in the class."""
         if getattr(cls, name, None) is None:
-            _v = int(pd.__version__.split('.')[2])
+            _v = int(pd.__version__.split('.')[1])
             if _v >= 23:
                 _indexer = functools.partial(indexer, name)
             else:
