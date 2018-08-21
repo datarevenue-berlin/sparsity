@@ -10,7 +10,6 @@ import pytest
 import sparsity as sp
 import sparsity.dask as dsp
 from dask.local import get_sync
-from sparsity import sparse_one_hot
 from sparsity.dask.reshape import one_hot_encode
 import pandas.util.testing as pdt
 

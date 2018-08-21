@@ -569,7 +569,7 @@ class SparseFrame(object):
             labels = [labels]
         if axis == 1:
             mask = np.logical_not(self.columns.isin(labels))
-            sf = self[self.columns[mask].tolist()]
+            sf = self.loc[:, self.columns[mask].tolist()]
         else:
             raise NotImplementedError
         return sf
