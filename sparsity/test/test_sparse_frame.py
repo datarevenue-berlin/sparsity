@@ -619,9 +619,11 @@ def test_npz_io_s3(complex_example):
 
 
 def test_getitem():
-    sf = SparseFrame(np.identity(10), columns=list('abcdefghij'))
+    id_ = np.identity(10)
+    sf = SparseFrame(id_, columns=list('abcdefghij'))
     assert sf['a'].data.todense()[0] == 1
     assert sf['j'].data.todense()[9] == 1
+    assert np.all(sf[['a', 'b']].data.todense() == np.asmatrix(id_[:, [0, 1]]))
     tmp = sf[['j', 'a']].data.todense()
     assert tmp[9, 0] == 1
     assert tmp[0, 1] == 1
