@@ -90,8 +90,8 @@ class SparseFrame(object):
     def _create_indexer(cls, name, indexer):
         """Create an indexer like _name in the class."""
         if getattr(cls, name, None) is None:
-            _v = int(pd.__version__.split('.')[1])
-            if _v >= 23:
+            _v = tuple(map(int, pd.__version__.split('.')))
+            if _v >= (0, 23, 0):
                 _indexer = functools.partial(indexer, name)
             else:
                 _indexer = functools.partial(indexer, name=name)
@@ -591,10 +591,13 @@ class SparseFrame(object):
     def __getitem__(self, item):
         if not isinstance(item, (tuple, list)):
             item = [item]
-        if item is not None and len(item) > 0:
+        if len(item) > 0:
             return self.reindex_axis(item, axis=1)
         else:
-            return self
+            data = np.empty(shape=(self.shape[0], 0))
+            return SparseFrame(data, index=self.index,
+                               columns=self.columns[[]])
+
 
     def dropna(self):
         """Drop nans from index."""
@@ -689,7 +692,7 @@ class SparseFrame(object):
                 new_data = SparseFrame(new_mat, columns=index,
                                        index=self.index)
             else:
-                raise ValueError('Only supported aces are 0 and 1.')
+                raise ValueError('Only supported axes are 0 and 1.')
 
         return new_data
 

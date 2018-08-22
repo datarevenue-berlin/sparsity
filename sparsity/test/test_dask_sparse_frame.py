@@ -67,7 +67,7 @@ def test_dask_loc(clickstream):
                                     'other_categorical': list('FGHIJ')},
                         index_col=['index', 'id'])
     res = sf.loc['2016-01-15':'2016-02-15']
-    res = res.compute(get=get_sync)
+    res = res.compute()
     assert res.index.levels[0].max().date() == dt.date(2016, 2, 15)
     assert res.index.levels[0].min().date() == dt.date(2016, 1, 15)
 
@@ -78,7 +78,7 @@ def test_dask_multi_index_loc(clickstream):
                                     'other_categorical': list('FGHIJ')},
                         index_col=['index', 'id'])
     res = sf.loc['2016-01-15':'2016-02-15']
-    res = res.compute(get=get_sync)
+    res = res.compute()
     assert res.index.get_level_values(0).date.min() == dt.date(2016, 1, 15)
     assert res.index.get_level_values(0).date.max() == dt.date(2016, 2, 15)
 

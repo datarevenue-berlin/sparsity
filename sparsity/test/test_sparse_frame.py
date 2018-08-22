@@ -2,7 +2,6 @@
 import datetime as dt
 import os
 
-#import dask.dataframe as dd
 from contextlib import contextmanager
 
 import numpy as np
@@ -628,6 +627,9 @@ def test_getitem():
     assert tmp[9, 0] == 1
     assert tmp[0, 1] == 1
     assert (sf[list('abcdefghij')].data.todense() == np.identity(10)).all()
+    assert sf[[]].shape == (10, 0)
+    assert len(sf[[]].columns) == 0
+    assert isinstance(sf.columns, type(sf[[]].columns))
 
 
 def test_vstack():
@@ -908,3 +910,6 @@ def test_loc_duplicate_index():
     assert len(sf.loc['B'].index) == 2
     assert np.all(sf.loc['A'].todense().values == np.identity(5)[:3])
     assert np.all(sf.loc['B'].todense().values == np.identity(5)[3:])
+
+    assert len(sf.loc[:, 'U'].columns) == 2
+    assert np.all(sf.loc[:, 'U'].todense().values == np.identity(5)[:, :2])
