@@ -589,6 +589,8 @@ class SparseFrame(object):
                            columns=self.columns)
 
     def __getitem__(self, item):
+        if item is None:
+            raise ValueError('cannot label index with a null key')
         if not isinstance(item, (tuple, list)):
             item = [item]
         if len(item) > 0:

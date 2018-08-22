@@ -630,6 +630,8 @@ def test_getitem():
     assert sf[[]].shape == (10, 0)
     assert len(sf[[]].columns) == 0
     assert isinstance(sf.columns, type(sf[[]].columns))
+    with pytest.raises(ValueError):
+        sf[None]
 
 
 def test_vstack():
