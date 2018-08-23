@@ -23,8 +23,7 @@ try:
     trail_db = True
 except:
     trail_db = False
-from sparsity.indexing import _CsrILocationIndexer, _CsrLocIndexer, \
-    get_indexers_list
+from sparsity.indexing import get_indexers_list
 
 
 def _is_empty(data):
@@ -41,6 +40,7 @@ def _is_empty(data):
     elif isinstance(data, list) and sum(map(len, list)) == 0:
         return True
     return False
+
 
 class SparseFrame(object):
     """
@@ -354,11 +354,10 @@ class SparseFrame(object):
         return SparseFrame(res, index=new_idx)
 
     def groupby_sum(self, by=None, level=0):
-        """
-        Optimized sparse groupby sum aggregation.
+        """Optimized sparse groupby sum aggregation.
 
         Simple operation using sparse matrix multiplication.
-        Expects result to be sparse aswell.
+        Expects result to be sparse as well.
 
         Parameters
         ----------

@@ -56,6 +56,24 @@ def traildb_to_coo(db, fieldname):
 
 
 def to_npz(sf, filename, block_size=None, storage_options=None):
+    """Write to npz file format.
+
+    Parameters
+    ----------
+    sf: sp.SparseFrame
+        sparse frame to store.
+    filename: str
+        path to write to.
+    block_size: int
+         block size in bytes when sending data to external filesystem.
+         Default is 100MB.
+    storage_options: dict
+        (optional) storage options for external filesystems.
+
+    Returns
+    -------
+    sf: SparseFrame
+    """
     filename = path2str(filename)
     data = _csr_to_dict(sf.data)
     data['metadata'] = \
@@ -98,6 +116,19 @@ def _save_remote(buffer, filename, block_size=None, storage_options=None):
 
 
 def read_npz(filename, storage_options=None):
+    """Read from a npz file.
+
+    Parameters
+    ----------
+    filename: str
+        path to file.
+    storage_options: dict
+        (optional) storage options for external filesystems.
+
+    Returns
+    -------
+    sf: sp.SparseFrame
+    """
     loader = _open_npz_archive(filename, storage_options)
     try:
         csr_mat = _load_csr(loader)
