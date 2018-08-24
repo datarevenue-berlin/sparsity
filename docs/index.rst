@@ -7,10 +7,21 @@ Sparsity
 ========
 
 Sparse data processing toolbox. It builds on top of pandas and scipy to
-provide DataFrame like API to work with sparse categorical data.
+provide DataFrame like API to work with numerical homogeneous sparse data.
 
-In combination with dask it provides support to execute complex operations on
-a concurrent/distributed level.
+Sparsity provides pandas like indexing capabilities and group transformations
+on Scipy csr matrices. This has prooven to be extremely efficient as will be
+shown below.
+
+Furthermore we provide a distributed implementation of this data struture by
+relying on the Dask_ framework. This includes distributed sorting, partitioning,
+grouping and much more.
+
+Although we try to mimic Pandas API similar to the Das DataFrame API some
+operations and parameters don't make sense on sparse or homogeneous data. Thus
+some interfaces might be changed slightly in their semantics and/or inputs.
+
+.. _Dask: https://dask.pydata.org/
 
 Install
 -------
@@ -24,7 +35,7 @@ Motivation
 Many tasks especially in data analytics and machine learning domain make use of
 sparse data structures to support the input of high dimensional data.
 
-This project was started to build an efficient homogenuos sparse data
+This project was started to build an efficient homogeneous sparse data
 processing pipeline. As of today dask has no support for something as an sparse
 dataframe. We process big amounts of highdimensional data on a daily basis at
 Datarevenue_ and our favourite language and ETL
