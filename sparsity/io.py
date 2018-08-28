@@ -1,4 +1,5 @@
 from io import BytesIO
+from pathlib import PurePath
 from urllib.parse import urlparse
 
 import numpy as np
@@ -55,6 +56,7 @@ def traildb_to_coo(db, fieldname):
 
 
 def to_npz(sf, filename, block_size=None, storage_options=None):
+    filename = path2str(filename)
     data = _csr_to_dict(sf.data)
     data['metadata'] = \
         {'multiindex': True if isinstance(sf.index, pd.MultiIndex) else False}
@@ -67,6 +69,7 @@ def to_npz(sf, filename, block_size=None, storage_options=None):
 
 
 def _write_dict_npz(data, filename, block_size, storage_options):
+    filename = path2str(filename)
     protocol = urlparse(filename).scheme or 'file'
     if protocol == 'file':
         with open(filename, 'wb') as fp:
@@ -83,6 +86,7 @@ def _write_dict_npz(data, filename, block_size, storage_options):
 def _save_remote(buffer, filename, block_size=None, storage_options=None):
     if storage_options is None:
         storage_options = {}
+    filename = path2str(filename)
     protocol = urlparse(filename).scheme
     fs = _filesystems[protocol](**storage_options)
     with fs.open(filename, 'wb', block_size) as remote_f:
@@ -107,6 +111,7 @@ def read_npz(filename, storage_options=None):
 def _open_npz_archive(filename, storage_options=None):
     if storage_options is None:
         storage_options = {}
+    filename = path2str(filename)
     protocol = urlparse(filename).scheme or 'file'
     open_f = _filesystems[protocol](**storage_options).open
     fp = open_f(filename, 'rb')
@@ -138,9 +143,20 @@ def _load_idx_from_npz(loader):
 
 
 def _just_read_array(path):
+    path = path2str(path)
     if path.endswith('hdf') or path.endswith('hdf5'):
         return pd.read_hdf(path, '/df').values
     elif path.endswith('csv'):
         return pd.read_csv(path).values
     elif path.endswith('pickle'):
         return pd.read_pickle(path).values
+
+
+def path2str(arg):
+    """Convert arg into its string representation.
+
+    This is only done if arg is subclass of PurePath
+    """
+    if issubclass(type(arg), PurePath):
+        return str(arg)
+    return arg
