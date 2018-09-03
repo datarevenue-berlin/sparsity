@@ -62,12 +62,19 @@ class SparseFrame(object):
 
         if index is None:
             self._index = _default_index(N)
+        elif len(index) != N and data.size:
+            raise ValueError('Shape of passed values is {},'
+                             'indices imply {}'
+                             .format(data.shape, (data.shape[0], len(index))))
         else:
-            # assert len(index) == N
             self._index = _ensure_index(index)
 
         if columns is None:
             self._columns = _default_index(K)
+        elif len(columns) != K and data.size:
+            raise ValueError('Shape of passed values is {},'
+                             'indices imply {}'
+                             .format(data.shape, (len(columns), data.shape[1])))
         else:
             # assert len(columns) == K
             self._columns = _ensure_index(columns)

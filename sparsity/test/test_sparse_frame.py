@@ -59,6 +59,8 @@ def test_empty_init():
     sf = SparseFrame(np.array([]), index=[], columns=['A', 'B'])
     assert sf.data.shape == (0, 2)
 
+    sf = SparseFrame(np.array([]), index=['A', 'B'], columns=[])
+    assert sf.data.shape == (2, 0)
 
 def test_groupby(groupby_frame):
     t = groupby_frame
@@ -915,3 +917,12 @@ def test_loc_duplicate_index():
 
     assert len(sf.loc[:, 'U'].columns) == 2
     assert np.all(sf.loc[:, 'U'].todense().values == np.identity(5)[:, :2])
+
+
+def test_error_unaligned_indices():
+    data = np.identity(5)
+    with pytest.raises(ValueError):
+        SparseFrame(data, index=np.arange(6))
+
+    with pytest.raises(ValueError):
+        SparseFrame(data, columns=np.arange(6))
