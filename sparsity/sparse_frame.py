@@ -28,7 +28,7 @@ from sparsity.indexing import get_indexers_list
 
 def _is_empty(data):
     try:
-        if any(map(lambda x: x== 0, data.shape)):
+        if any(map(lambda x: x == 0, data.shape)):
             return True
         else:
             return False
@@ -38,6 +38,7 @@ def _is_empty(data):
     if len(data) == 0:
         return True
     elif isinstance(data, list) and sum(map(len, list)) == 0:
+        # FIXME: map(len, list)?
         return True
     return False
 
@@ -46,10 +47,10 @@ class SparseFrame(object):
     """
     Simple sparse table implementation. It adds pandas indexing abilities to a
     compressed row sparse frame  based on scipy.sparse.csr_matrix. This makes
-    indexing along the first axis extremly efficient and cheap. Indexing along
+    indexing along the first axis extremely efficient and cheap. Indexing along
     the second axis should be avoided if possible though.
 
-    For a distributed implementation see sparsity.dask.SparseFrame
+    For a distributed implementation see sparsity.dask.SparseFrame.
     """
 
     def __init__(self, data, index=None, columns=None, **kwargs):
@@ -74,7 +75,7 @@ class SparseFrame(object):
             data = data.to_frame()
 
         elif len(data.shape) == 1:
-            data = data.reshape(-1,1)
+            data = data.reshape(-1, 1)
 
         self.empty = False
         N, K = data.shape
@@ -102,7 +103,6 @@ class SparseFrame(object):
             self.empty = True if _is_empty(data) else False
             self._init_csr(data)
 
-        # register indexers
         self.ndim = 2
 
     @classmethod
@@ -141,13 +141,13 @@ class SparseFrame(object):
         Parameters
         ----------
         pandas: bool
-            if true returns a pandas DataFrame (default) else a numpy
-            array is returned.
+            If true returns a pandas DataFrame (default),
+            else a numpy array is returned.
 
         Returns
         -------
         dense: pd.DataFrame | np.ndarray
-            dense representation.
+            dense representation
         """
         if not self.empty:
             dense = np.asarray(self.data.toarray())
@@ -183,8 +183,8 @@ class SparseFrame(object):
         if not self.empty:
             self._data = sparse.vstack(
                 [csr,
-                 sparse.coo_matrix((1,csr.shape[1])).tocsr()
-                 ])
+                 sparse.coo_matrix((1, csr.shape[1])).tocsr()]
+            )
         else:
             self._data = csr
 
@@ -233,17 +233,17 @@ class SparseFrame(object):
                                self.columns.copy(*args, **kwargs))
 
     def multiply(self, other, axis='columns'):
-        """Element wise multiplication.
+        """Element-wise multiplication.
 
         Relies on numpy broadcasting.
 
         Parameters
         ----------
-            other: SparseFrame
-                To multiply row-wise should be of shape: (self.shape[0], 1). To
-                multiply col-wise 'other should be of shape: (1, self.shape[1]).
-            axis: 'columns' | 'index'
-                which axis to use.
+        other: SparseFrame
+            To multiply row-wise should be of shape: (self.shape[0], 1).
+            To multiply col-wise should be of shape: (1, self.shape[1]).
+        axis: 'columns' | 'index'
+            which axis to use
         """
         try:
             other = other.toarray()
@@ -257,7 +257,7 @@ class SparseFrame(object):
 
         data = self.data.multiply(other)
         assert data.shape == self.data.shape, \
-            "Data shapes miss-match: {}, {}".format(data.shape,self.data.shape)
+            "Data shapes mismatch: {}, {}".format(data.shape, self.data.shape)
         return SparseFrame(data, self.index, self.columns)
 
     def nnz(self):
@@ -282,11 +282,11 @@ class SparseFrame(object):
             reindexed sparse frame
         """
         if axis == 0:
-            return SparseFrame(self.data[idx,:],
+            return SparseFrame(self.data[idx, :],
                                index=self.index[idx],
                                columns=self.columns)
         elif axis == 1:
-            return SparseFrame(self.data[:,idx],
+            return SparseFrame(self.data[:, idx],
                                index=self.index,
                                columns=self.columns[idx])
 
@@ -327,7 +327,7 @@ class SparseFrame(object):
     def data(self):
         if self.empty:
             return self._data
-        return self._data[:-1,:]
+        return self._data[:-1, :]
 
     def groupby_agg(self, by=None, level=None, agg_func=None):
         """Groupby aggregation (experimental).
@@ -337,20 +337,20 @@ class SparseFrame(object):
         Parameters
         ----------
         by: str | array-like
-            column name or groupby labels.
+            column name or groupby labels
         level: int
-            index level to use for groupby.
+            index level to use for groupby
         agg_func: callable
-            function to execute in individual groups of data. Must accept
+            Function to execute in individual groups of data. Must accept
             a SparseFrame and needs to return a vector of shape (1, n_cols).
         """
         by = self._get_groupby_col(by, level)
         groups = pd.Index(np.arange(self.shape[0])).groupby(by)
         res = sparse.csr_matrix((len(groups), self.shape[1]))
         new_idx = []
-        for i, (name, indizes) in enumerate(groups.items()):
-            new_idx.append(self.index.values[indizes[0]])
-            res[i] = agg_func(self.data[indizes.values,:])
+        for i, (name, indices) in enumerate(groups.items()):
+            new_idx.append(self.index.values[indices[0]])
+            res[i] = agg_func(self.data[indices.values, :])
         return SparseFrame(res, index=new_idx)
 
     def groupby_sum(self, by=None, level=0):
@@ -361,8 +361,8 @@ class SparseFrame(object):
 
         Parameters
         ----------
-        by: np.ndarray
-            (optional) alternative index.
+        by: np.ndarray (optional)
+            Alternative index.
         level: int
             Level of (multi-)index to group on.
 
@@ -375,11 +375,12 @@ class SparseFrame(object):
         group_idx = by.argsort()
         gm = _create_group_matrix(by[group_idx])
         grouped_data = self._data[group_idx, :].T.dot(gm).T
-        return SparseFrame(grouped_data, index=np.unique(by), columns=self._columns)
+        return SparseFrame(grouped_data, index=np.unique(by),
+                           columns=self._columns)
 
     def _get_groupby_col(self, by, level):
         if by is None and level is None:
-            raise ValueError("You have to supply one of 'by' and 'level'")
+            raise ValueError("You have to supply one of 'by' and 'level'.")
         if by is not None:
             try:
                 if by in self._columns:
@@ -394,14 +395,14 @@ class SparseFrame(object):
                 by = np.asarray(self._index)
             elif level > 0:
                 raise ValueError(
-                    "Connot use level > 0 in a non MultiIndex Frame")
+                    "Cannot use level > 0 in a non-MultiIndex Frame")
             else:
                 by = self.index.values
         return by
 
     def join(self, other, axis=1, how='outer', level=None):
         """
-        Join two tables along their indices
+        Join two tables along their indices.
 
         Parameters
         ----------
@@ -412,19 +413,18 @@ class SparseFrame(object):
         how: str
             one of 'inner', 'outer', 'left', 'right'
         level: int
-            if axis is MultiIndex join using this level
+            if axis is MultiIndex, join using this level
         Returns
         -------
             joined: sparsity.SparseFrame
         """
-
         if isinstance(self._index, pd.MultiIndex)\
             or isinstance(other._index, pd.MultiIndex):
             raise NotImplementedError('MultiIndex not supported.')
         if not isinstance(other, SparseFrame):
             other = SparseFrame(other)
-        if axis not in set([0, 1]):
-            raise ValueError("axis mut be either 0 or 1")
+        if axis not in {0, 1}:
+            raise ValueError("Axis mut be either 0 or 1.")
         if axis == 0:
             if np.array_equal(other._columns.values, self._columns.values):
                 # take short path if join axes are identical
@@ -434,7 +434,7 @@ class SparseFrame(object):
             else:
                 # TODO: resolve this
                 raise NotImplementedError(
-                    "Joining along axis 0 fails when column names differ."
+                    "Joining along axis 0 fails when column names differ. "
                     "This is probably caused by adding all-zeros row.")
                 data, new_index = _matrix_join(self._data.T.tocsr(), other._data.T.tocsr(),
                                                self._columns, other._columns,
@@ -462,18 +462,20 @@ class SparseFrame(object):
                     self_data = self._data
 
                 data, new_index = _matrix_join(self_data, other_data,
-                                              self.index, other.index,
-                                              how=how)
+                                               self.index, other.index,
+                                               how=how)
                 res = SparseFrame(data,
                                   index=new_index,
-                                  columns=np.concatenate([self._columns, other._columns]))
+                                  columns=np.concatenate([self._columns,
+                                                          other._columns]))
         return res
 
     def __len__(self):
         return self.shape[0]
 
     def rename(self, columns, inplace=False):
-        """Rename columns by applying a callable to every column name.
+        """
+        Rename columns by applying a callable to every column name.
 
         Parameters
         ----------
@@ -500,7 +502,8 @@ class SparseFrame(object):
         return self.data
 
     def sort_index(self):
-        """Sort table along index.
+        """
+        Sort table along index.
 
         Returns
         -------
@@ -535,10 +538,14 @@ class SparseFrame(object):
         Parameters
         ----------
         other: sparsity.SparseFrame
+            Another SparseFrame.
+        how: str
+            How to join frames along their indexes. Default is 'outer' which
+            makes the result contain labels from both frames.
         fill_value: float
-            fill value if other frame is not exactly the same shape
-            for sparse data the only sensible fill value is 0 passing
-            any other value will result in a ValueError
+            Fill value if other frame is not exactly the same shape.
+            For sparse data the only sensible fill value is 0. Passing
+            any other value will result in a ValueError.
 
         Returns
         -------
@@ -604,19 +611,19 @@ class SparseFrame(object):
         Parameters
         ----------
         n: int
-            how many rows to return, default is 1.
+            how many rows to return, default is 1
 
         Returns
         -------
         head: SparseFrame
         """
         n = min(n, len(self._index))
-        return pd.SparseDataFrame(self.data[:n,:].todense(),
+        return pd.SparseDataFrame(self.data[:n, :].todense(),
                                   index=self.index[:n],
                                   columns=self.columns)
 
     def _slice(self, sliceobj):
-        return SparseFrame(self.data[sliceobj,:],
+        return SparseFrame(self.data[sliceobj, :],
                            index=self.index[sliceobj],
                            columns=self.columns)
 
@@ -652,6 +659,7 @@ class SparseFrame(object):
 
     @classmethod
     def read_traildb(cls, file, field, ts_unit='s'):
+        # TODO: docstring
         if not trail_db:
             raise ImportError("Traildb could not be imported")
         uuids, timestamps, cols, coo = traildb_to_coo(file, field)
@@ -669,8 +677,8 @@ class SparseFrame(object):
         Parameters
         ----------
         kwargs: dict
-            mapping from column name to values. Values must be of correct shape
-            to be inserted succesfully.
+            Mapping from column name to values. Values must be of correct shape
+            to be inserted successfully.
 
         Returns
         -------
@@ -720,7 +728,7 @@ class SparseFrame(object):
 
         Returns
         -------
-
+        df: SparseFrame
         """
         if not isinstance(labels, (list, tuple, set)):
             labels = [labels]
@@ -749,7 +757,7 @@ class SparseFrame(object):
 
     def __getitem__(self, item):
         if item is None:
-            raise ValueError('cannot label index with a null key')
+            raise ValueError('Cannot label index with a null key.')
         if not isinstance(item, (tuple, list)):
             item = [item]
         if len(item) > 0:
@@ -758,7 +766,6 @@ class SparseFrame(object):
             data = np.empty(shape=(self.shape[0], 0))
             return SparseFrame(data, index=self.index,
                                columns=self.columns[[]])
-
 
     def dropna(self):
         """Drop nans from index."""
@@ -884,8 +891,8 @@ class SparseFrame(object):
             avoid duplicating data
         axis: int
             Axis to target. Can be either (0, 1).
-        args
-        kwargs
+        args, kwargs
+            Will be passed to reindex_axis.
 
         Returns
         -------
@@ -911,7 +918,7 @@ class SparseFrame(object):
                      level=None, copy=True, limit=None, fill_value=0):
         """Conform SparseFrame to new index.
 
-        Missing values will be filled with zeroes.
+        Missing values will be filled with zeros.
 
         Parameters
         ----------
@@ -977,8 +984,8 @@ class SparseFrame(object):
             block size in bytes only has effect if writing to remote storage
             if set to None defaults to 100MB
         storage_options: dict
-            additional parameters to pass to FileSystem class
-            only useful when writing to remote storages.
+            additional parameters to pass to FileSystem class;
+            only useful when writing to remote storages
         Returns
         -------
             None
@@ -1111,8 +1118,8 @@ def _one_hot_series_csr(categories, dtype, oh_col,
     n_samples = codes.size
     mask = codes != -1
     if np.any(~mask):
-        raise ValueError("unknown categorical features present %s "
-                         "during transform." % np.unique(s[~mask]))
+        raise ValueError("Unknown categorical features present "
+                         "during transform: %s." % np.unique(s[~mask]))
     row_indices = np.arange(n_samples, dtype=np.int32)
     col_indices = codes
     data = np.ones(row_indices.size)
@@ -1126,7 +1133,7 @@ def _check_categories_order(categories1, categories2, categorical_column_name,
                             ignore_cat_order_mismatch):
     """Check if two lists of categories differ. If they have different
     elements, raise an exception. If they differ only by order of elements,
-    raise an issue unless ignore_cat_order_mismatch is set."""
+    raise an exception unless ignore_cat_order_mismatch is set."""
 
     if categories2 is None or list(categories2) == list(categories1):
         return
@@ -1145,6 +1152,7 @@ def _check_categories_order(categories1, categories2, categorical_column_name,
                 mismatch_type=mismatch_type
             )
         )
+
 
 for _name, _indexer in get_indexers_list():
     SparseFrame._create_indexer(_name, _indexer)
