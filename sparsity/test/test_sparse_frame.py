@@ -921,8 +921,14 @@ def test_loc_duplicate_index():
 
 def test_error_unaligned_indices():
     data = np.identity(5)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) as e:
         SparseFrame(data, index=np.arange(6))
+        assert '(5, 5)' in str(e) and '(6, 5)' in str(e)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) as e:
         SparseFrame(data, columns=np.arange(6))
+        assert '(5, 5)' in str(e) and '(5, 6)' in str(e)
+
+    with pytest.raises(ValueError) as e:
+        SparseFrame(data, columns=np.arange(6), index=np.arange(6))
+        assert '(5, 5)' in str(e) and '(6, 6)' in str(e)

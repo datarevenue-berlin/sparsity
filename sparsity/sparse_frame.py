@@ -42,6 +42,7 @@ def _is_empty(data):
         return True
     return False
 
+
 class SparseFrame(object):
     """
     Simple sparse table based on scipy.sparse.csr_matrix
@@ -63,18 +64,26 @@ class SparseFrame(object):
         if index is None:
             self._index = _default_index(N)
         elif len(index) != N and data.size:
+            if columns is not None:
+                implied_axis_1 = len(columns)
+            else:
+                implied_axis_1 = data.shape[1]
             raise ValueError('Shape of passed values is {},'
                              'indices imply {}'
-                             .format(data.shape, (data.shape[0], len(index))))
+                             .format(data.shape, (len(index), implied_axis_1)))
         else:
             self._index = _ensure_index(index)
 
         if columns is None:
             self._columns = _default_index(K)
         elif len(columns) != K and data.size:
+            if index is not None:
+                implied_axis_0 = len(index)
+            else:
+                implied_axis_0 = data.shape[0]
             raise ValueError('Shape of passed values is {},'
                              'indices imply {}'
-                             .format(data.shape, (len(columns), data.shape[1])))
+                             .format(data.shape, (implied_axis_0, len(columns))))
         else:
             # assert len(columns) == K
             self._columns = _ensure_index(columns)
