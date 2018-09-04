@@ -6,18 +6,18 @@
 Sparsity
 ========
 
-Sparse data processing toolbox. It builds on top of pandas and scipy to
-provide DataFrame like API to work with numerical homogeneous sparse data.
+Sparse data processing toolbox. It builds on top of Pandas and Scipy to
+provide DataFrame-like API to work with numerical homogeneous sparse data.
 
-Sparsity provides pandas like indexing capabilities and group transformations
-on Scipy csr matrices. This has prooven to be extremely efficient as will be
+Sparsity provides Pandas-like indexing capabilities and group transformations
+on Scipy csr matrices. This has proven to be extremely efficient as
 shown below.
 
-Furthermore we provide a distributed implementation of this data struture by
-relying on the Dask_ framework. This includes distributed sorting, partitioning,
-grouping and much more.
+Furthermore we provide a distributed implementation of this data structure by
+relying on the Dask_ framework. This includes distributed sorting,
+partitioning, grouping and much more.
 
-Although we try to mimic Pandas API similar to the Das DataFrame API some
+Although we try to mimic the Pandas DataFrame API, some
 operations and parameters don't make sense on sparse or homogeneous data. Thus
 some interfaces might be changed slightly in their semantics and/or inputs.
 
@@ -32,16 +32,16 @@ Sparsity is available from PyPi (coming soon)::
 
 Motivation
 ----------
-Many tasks especially in data analytics and machine learning domain make use of
-sparse data structures to support the input of high dimensional data.
+Many tasks, especially in data analytics and machine learning domain, make use
+of sparse data structures to support the input of high dimensional data.
 
 This project was started to build an efficient homogeneous sparse data
-processing pipeline. As of today dask has no support for something as an sparse
-dataframe. We process big amounts of highdimensional data on a daily basis at
+processing pipeline. As of today Dask has no support for something as a sparse
+dataframe. We process big amounts of high-dimensional data on a daily basis at
 Datarevenue_ and our favourite language and ETL
-framework are python and dask. After chaining many function calls on
+framework are Python and Dask. After chaining many function calls on
 scipy.sparse csr matrices that involved handling of indices and column names to
-produce a sparse data pipeline we decided to start this project.
+produce a sparse data pipeline, we decided to start this project.
 
 This package might be especially useful to you if you have very big amounts of
 sparse data such as clickstream data, categorical timeseries, log data or
@@ -49,11 +49,11 @@ similarly sparse data.
 
 .. _Datarevenue: https://datarevenue.com
 
-Comparison to Pandas SparseFrame
---------------------------------
-Pandas has it's own implementation of sparse data structures. Unfortunately this
-structures performs quite badly with a groupby sum aggregation which we use
-frequently. Furthermore doing a groupby on a pandas SparseDataFrame returns a
+Comparison to Pandas SparseDataFrame
+------------------------------------
+Pandas has its own implementation of sparse data structures. Unfortunately this
+structures perform quite badly with a groupby-sum aggregation which we use
+frequently. Furthermore doing a groupby on a Pandas SparseDataFrame returns a
 dense DataFrame. This makes chaining many groupby operations over multiple
 files cumbersome and less efficient. Consider following example::
 
