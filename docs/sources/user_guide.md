@@ -1,11 +1,9 @@
 # Sparsity User Guide
 
-## Quick start
-
-### Creating a SparseFrame
+## Creating a SparseFrame
 
 Create a SparseFrame from numpy array:
-```pydocstring
+```pycon
 >>> import sparsity
 >>> import numpy as np
 
@@ -24,7 +22,7 @@ Create a SparseFrame from numpy array:
 ```
 
 You can also create a SparseFrame from Pandas DataFrame:
-```pydocstring
+```pycon
 >>> import pandas as pd
 
 >>> df = pd.DataFrame(a, index=np.arange(10, 20), columns=list('ABCDE'))
@@ -40,11 +38,10 @@ You can also create a SparseFrame from Pandas DataFrame:
  with 10 stored elements in Compressed Sparse Row format]
 ```
 
-### Indexing and subscripting
+## Indexing
 
 Indexing a SparseFrame with column name gives a new SparseFrame:
-```pydocstring
->>> sf['A']
+```pycon
 >>> sf['A']
       A
 10  0.0
@@ -57,7 +54,7 @@ Indexing a SparseFrame with column name gives a new SparseFrame:
 ```
 
 Similarly for a list of column names:
-```pydocstring
+```pycon
 >>> sf[['A', 'B']]
       A         B
 10  0.0  0.000000
@@ -69,13 +66,14 @@ Similarly for a list of column names:
  with 3 stored elements in Compressed Sparse Row format]
 ```
 
-### Basic arithmetic operations
+## Basic arithmetic operations
 
 Sum, mean, min and max methods are called on underlying Scipy CSR matrix
 object. They can be computed over whole SparseFrame or along columns/rows:
-```pydocstring
+```pycon
 >>> sf.sum(axis=0)
 matrix([[0.        , 2.79813655, 0.84659119, 2.8522892 , 2.88412053]])
+
 >>> sf.mean(axis=1)
 matrix([[0.        ],
         [0.19257014],
@@ -87,14 +85,16 @@ matrix([[0.        ],
         [0.19542124],
         [0.        ],
         [0.36707143]])
+        
 >>> sf.min()
 0.0
+
 >>> sf.max()
 0.9956989680903189
 ```
 
 Add 2 SparseFrames:
-```pydocstring
+```pycon
 >>> sf.add(sf)
       A         B    C         D         E
 10  0.0  0.000000  0.0  0.000000  0.000000
@@ -107,7 +107,7 @@ Add 2 SparseFrames:
 ```
 
 Multiply each row/column by a number:
-```pydocstring
+```pycon
 >>> sf.multiply(np.arange(10), axis='index')
       A         B    C         D         E
 10  0.0  0.000000  0.0  0.000000  0.000000
@@ -129,10 +129,10 @@ Multiply each row/column by a number:
  with 10 stored elements in Compressed Sparse Row format]
 ```
 
-### Joining
+## Joining
 
 By default SparseFrames are joined on their indexes:
-```pydocstring
+```pycon
 >>> sf2 = sparsity.SparseFrame(np.random.rand(3, 2), index=[9, 10, 11], columns=['X', 'Y'])
 >>> sf2
            X         Y
@@ -154,7 +154,7 @@ By default SparseFrames are joined on their indexes:
 ```
 
 You can also join on columns:
-```pydocstring
+```pycon
 >>> sf3 = sparsity.SparseFrame(np.random.rand(3, 2), index=[97, 98, 99], columns=['E', 'F'])
 >>> sf3
            E         F
@@ -175,15 +175,16 @@ You can also join on columns:
  with 8 stored elements in Compressed Sparse Row format]
 ```
 
-### Groupby
+## Groupby
 
 Groupby-sum operation is optimized for sparse case:
-```pydocstring
+```pycon
 >>> df = pd.DataFrame({'X': [1, 1, 1, 0], 
 ...                    'Y': [0, 1, 0, 1],
 ...                    'gr': ['a', 'a', 'b', 'b'],
 ...                    'day': [10, 11, 11, 12]})
->>> df = df.set_index(['day', 'gr'])>>> sf4 = sparsity.SparseFrame(df)
+>>> df = df.set_index(['day', 'gr'])
+>>> sf4 = sparsity.SparseFrame(df)
 >>> sf4
           X    Y
 day gr          
@@ -202,8 +203,8 @@ b  1.0  1.0
  with 4 stored elements in Compressed Sparse Row format]
 ```
 
-Other operations can also be applied:
-```pydocstring
+Operations other then sum can also be applied:
+```pycon
 >>> sf4.groupby_agg(level=1, agg_func=lambda x: x.mean(axis=0))
      X    Y
 a  1.0  0.5
