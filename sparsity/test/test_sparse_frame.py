@@ -714,11 +714,22 @@ def test_drop_duplicate_idx():
 
 
 def test_repr():
+    sf = SparseFrame(sparse.csr_matrix((2, 3)))
+    res = sf.__repr__()
+    assert isinstance(res, str)
+    assert len(res.splitlines()) == 1 + 2 + 2  # column names + 2 rows + descr.
+
     sf = SparseFrame(sparse.csr_matrix((10, 10000)))
     res = sf.__repr__()
     assert isinstance(res, str)
     assert '10x10000' in res
     assert '0 stored' in res
+    assert len(res.splitlines()) == 1 + 5 + 2
+
+    sf = SparseFrame(sparse.csr_matrix((10000, 10000)))
+    res = sf.__repr__()
+    assert isinstance(res, str)
+    assert len(res.splitlines()) == 1 + 5 + 2
 
     sf = SparseFrame(np.array([]), index=[], columns=['A', 'B'])
     res = sf.__repr__()

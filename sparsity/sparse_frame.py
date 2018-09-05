@@ -491,24 +491,23 @@ class SparseFrame(object):
             data = data.toarray()
         else:
             cols = self._columns
-            data = self.data[:nrows,:].toarray()
+            data = self.data[:nrows, :].toarray()
 
-        df = pd.DataFrame(data,
-            columns=cols,
-            index=self._index[:nrows]
-        )
-        df_str = df.__repr__().splitlines()[:-2]
+        df = pd.DataFrame(data, columns=cols, index=self._index[:nrows])
+        df_str = df.__repr__().splitlines()
+        if df_str[-2] == '':
+            df_str = df_str[:-2]
+
         sparse_str = "[{nrows}x{ncols} SparseFrame of type '<class " \
                      "'{dtype}'>' \n with {nnz} stored elements " \
                      "in Compressed Sparse Row format]".format(
-            nrows=self.shape[0],
-            ncols=self.shape[1],
-            dtype=self.data.dtype,
-            nnz=self.data.nnz
-        )
-        repr = "{data}\n{sparse}"\
-            .format(data='\n'.join(df_str),
-                    sparse=sparse_str)
+                         nrows=self.shape[0],
+                         ncols=self.shape[1],
+                         dtype=self.data.dtype,
+                         nnz=self.data.nnz
+                     )
+        repr = "{data}\n{sparse}" \
+            .format(data='\n'.join(df_str), sparse=sparse_str)
         return repr
 
     def __array__(self):
