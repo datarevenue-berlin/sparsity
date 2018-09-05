@@ -749,7 +749,13 @@ def test_init_with_pandas():
     sf = SparseFrame(df)
     assert sf.shape == (5, 5)
     assert isinstance(sf.index, pd.MultiIndex)
-    assert sf.columns.tolist() == list('ABCDE')
+    assert (sf.index == df.index).all()
+    assert (sf.columns == df.columns).all()
+
+    with pytest.warns(SyntaxWarning):
+        sf = SparseFrame(df, index=np.arange(10, 15), columns=list('VWXYZ'))
+    assert sf.index.tolist() == np.arange(10, 15).tolist()
+    assert sf.columns.tolist() == list('VWXYZ')
 
     s = pd.Series(np.ones(10))
     sf = SparseFrame(s)

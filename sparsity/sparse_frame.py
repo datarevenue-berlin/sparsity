@@ -85,12 +85,14 @@ class SparseFrame(object):
                              'indices imply {}'
                              .format(data.shape, (implied_axis_0, len(columns))))
         else:
-            # assert len(columns) == K
             self._columns = _ensure_index(columns)
 
         if not sparse.isspmatrix_csr(data):
             try:
-                self._init_values(data, kwargs)
+                self._init_values(data,
+                                  init_index=index is None,
+                                  init_columns=columns is None,
+                                  **kwargs)
             except TypeError:
                 raise TypeError(traceback.format_exc() +
                                 "\nThe error described above occurred while "
@@ -113,12 +115,22 @@ class SparseFrame(object):
                 _indexer = functools.partial(indexer, name=name)
             setattr(cls, name, property(_indexer, doc=indexer.__doc__))
 
-    def _init_values(self, data, kwargs):
+    def _init_values(self, data, init_index=True, init_columns=True, **kwargs):
         if isinstance(data, pd.DataFrame):
             self.empty = data.empty
             self._init_csr(sparse.csr_matrix(data.values))
-            self._index = _ensure_index(data.index)
-            self._columns = _ensure_index(data.columns)
+            if init_index:
+                self._index = _ensure_index(data.index)
+            else:
+                warnings.warn("Passed index explicitly while initializing "
+                              "from pd.DataFrame. Original DataFrame's index "
+                              "will be ignored.", SyntaxWarning)
+            if init_columns:
+                self._columns = _ensure_index(data.columns)
+            else:
+                warnings.warn("Passed columns explicitly while initializing "
+                              "from pd.DataFrame. Original DataFrame's columns"
+                              " will be ignored.", SyntaxWarning)
         elif _is_empty(data):
             self.empty = True
             self._data = sparse.csr_matrix((len(self.index),
