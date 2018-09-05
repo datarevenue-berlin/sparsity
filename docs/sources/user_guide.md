@@ -21,13 +21,13 @@ Create a SparseFrame from numpy array:
  with 10 stored elements in Compressed Sparse Row format]
 ```
 
-You can also create a SparseFrame from Pandas DataFrame:
+You can also create a SparseFrame from Pandas DataFrame. Index and columns
+will be preserved:
 ```pycon
 >>> import pandas as pd
 
 >>> df = pd.DataFrame(a, index=np.arange(10, 20), columns=list('ABCDE'))
->>> sf = sparsity.SparseFrame(df)
->>> sf
+>>> sparsity.SparseFrame(df)
       A         B    C         D         E
 10  0.0  0.000000  0.0  0.000000  0.000000
 11  0.0  0.962851  0.0  0.000000  0.000000
@@ -36,6 +36,23 @@ You can also create a SparseFrame from Pandas DataFrame:
 14  0.0  0.000000  0.0  0.000000  0.985610
 [10x5 SparseFrame of type '<class 'float64'>' 
  with 10 stored elements in Compressed Sparse Row format]
+```
+
+Initialization from Scipy CSR matrix is also possible. If you don't pass
+index or columns, defaults will be used:
+```pycon
+>>> import scipy.sparse
+
+>>> csr = scipy.sparse.rand(10, 5, density=0.1, format='csr')
+>>> sparsity.SparseFrame(csr)
+          0    1         2    3    4
+0  0.638314  0.0  0.000000  0.0  0.0
+1  0.000000  0.0  0.000000  0.0  0.0
+2  0.000000  0.0  0.043411  0.0  0.0
+3  0.000000  0.0  0.000000  0.0  0.0
+4  0.000000  0.0  0.222951  0.0  0.0
+[10x5 SparseFrame of type '<class 'float64'>' 
+ with 5 stored elements in Compressed Sparse Row format]
 ```
 
 ## Indexing
