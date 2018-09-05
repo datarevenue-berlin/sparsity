@@ -43,6 +43,13 @@ def _is_empty(data):
     return False
 
 
+def _append_zero_row(csr):
+    return sparse.vstack(
+        [csr,
+         sparse.coo_matrix((1, csr.shape[1])).tocsr()]
+    )
+
+
 class SparseFrame(object):
     """
     Simple sparse table based on scipy.sparse.csr_matrix
@@ -164,10 +171,7 @@ class SparseFrame(object):
         """Keep a zero row at the end of the csr matrix for aligns."""
         self.shape = csr.shape
         if not self.empty:
-            self._data = sparse.vstack(
-                [csr,
-                 sparse.coo_matrix((1,csr.shape[1])).tocsr()
-                 ])
+            self._data = _append_zero_row(csr)
         else:
             self._data = csr
 
@@ -369,12 +373,13 @@ class SparseFrame(object):
                 index = np.hstack([self.index, other.index])
                 res = SparseFrame(data, index=index, columns=self._columns)
             else:
-                raise NotImplementedError(
-                    "Joining along axis 0 fails when column names differ."
-                    "This is probably caused by adding all-zeros row.")
-                data, new_index = _matrix_join(self._data.T.tocsr(), other._data.T.tocsr(),
-                                               self._columns, other._columns,
-                                               how=how)
+                data, new_index = _matrix_join(
+                    _append_zero_row(self.data.T.tocsr()),
+                    _append_zero_row(other.data.T.tocsr()),
+                    self._columns,
+                    other._columns,
+                    how=how,
+                )
                 res = SparseFrame(data.T.tocsr(),
                                   index=np.concatenate([self.index, other.index]),
                                   columns=new_index)

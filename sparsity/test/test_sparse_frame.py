@@ -127,10 +127,9 @@ def test_mutually_exclusive_join():
     left_ax0 = SparseFrame(np.identity(5), columns=np.arange(5))
     right_ax0 = SparseFrame(np.identity(5), columns=np.arange(5, 10))
 
-    with pytest.raises(NotImplementedError):  # FIXME: remove when repaired
-        res_ax0 = left_ax0.join(right_ax0, axis=0)
-        assert np.all(res_ax0.data.todense() == correct), \
-            "Joining along axis 0 failed."
+    res_ax0 = left_ax0.join(right_ax0, axis=0)
+    assert np.all(res_ax0.data.todense() == correct), \
+        "Joining along axis 0 failed."
 
     assert np.all(res_ax1.data.todense() == correct), \
         "Joining along axis 1 failed."
