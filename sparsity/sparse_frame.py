@@ -206,8 +206,15 @@ class SparseFrame(object):
 
     def multiply(self, other, axis='columns'):
         """
-        To multiply row-wise 'other' should be of shape: (self.shape[0], 1)
-        To multiply col-wise 'other should be of shape: (1, self.shape[1])
+        Multiply SparseFrame row-wise or column-wise.
+
+        Parameters
+        ----------
+        other: array-like
+            Vector of numbers to multiply columns/rows by.
+        axis: int | str
+            - 1 or 'columns' to multiply column-wise (default)
+            - 0 or 'index' to multiply row-wise
         """
         try:
             other = other.toarray()
@@ -215,9 +222,11 @@ class SparseFrame(object):
             pass
 
         if axis in [0, 'index']:
+            other = np.asarray(other).reshape(-1, 1)
+        elif axis in [1, 'columns']:
             other = np.asarray(other).reshape(1, -1)
         else:
-            other = np.asarray(other).reshape(-1, 1)
+            raise ValueError("Axis should be one of 0, 1, 'index', 'columns'.")
 
         data = self.data.multiply(other)
         assert data.shape == self.data.shape, \

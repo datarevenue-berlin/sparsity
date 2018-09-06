@@ -778,20 +778,28 @@ def test_multiply_rowwise():
     other = np.arange(5)
     msg = "Row wise multiplication failed"
 
-    # nd.array
-    other = other.reshape(1, -1)
+    # list
+    res = sf.multiply(list(other), axis=0)
+    assert np.all(res.sum(axis=1).T == 5 * other), msg
+
+    # 1D array
     res = sf.multiply(other, axis=0)
-    assert np.all(res.sum(axis=0) == 5 * other), msg
+    assert np.all(res.sum(axis=1).T == 5 * other), msg
+
+    # 2D array
+    _other = other.reshape(-1, 1)
+    res = sf.multiply(_other, axis=0)
+    assert np.all(res.sum(axis=1).T == 5 * other), msg
 
     # SparseFrame
     _other = SparseFrame(other)
     res = sf.multiply(_other, axis=0)
-    assert np.all(res.sum(axis=0) == 5 * other), msg
+    assert np.all(res.sum(axis=1).T == 5 * other), msg
 
     # csr_matrix
     _other = _other.data
     res = sf.multiply(_other, axis=0)
-    assert np.all(res.sum(axis=0) == 5 * other), msg
+    assert np.all(res.sum(axis=1).T == 5 * other), msg
 
 
 def test_multiply_colwise():
@@ -800,21 +808,37 @@ def test_multiply_colwise():
     other = np.arange(5)
     msg = "Column wise multiplication failed"
 
-    # nd.array
-    other = other.reshape(-1, 1)
+    # list
+    res = sf.multiply(list(other), axis=1)
+    assert np.all(res.sum(axis=0) == 5 * other), msg
+
+    # 1D array
     res = sf.multiply(other, axis=1)
-    assert np.all(res.sum(axis=1) == 5 * other), msg
+    assert np.all(res.sum(axis=0) == 5 * other), msg
+
+    # 2D array
+    _other = other.reshape(1, -1)
+    res = sf.multiply(_other, axis=1)
+    assert np.all(res.sum(axis=0) == 5 * other), msg
 
     # SparseFrame
     _other = SparseFrame(other)
     res = sf.multiply(_other, axis=1)
-    assert np.all(res.sum(axis=1) == 5 * other), msg
+    assert np.all(res.sum(axis=0) == 5 * other), msg
 
     # csr_matrix
     _other = _other.data
     _other.toarray()
     res = sf.multiply(_other, axis=1)
-    assert np.all(res.sum(axis=1) == 5 * other), msg
+    assert np.all(res.sum(axis=0) == 5 * other), msg
+
+
+def test_multiply_wrong_axis():
+    sf = SparseFrame(np.ones((5, 5)))
+    other = np.arange(5)
+
+    with pytest.raises(ValueError):
+        sf.multiply(other, axis=2)
 
 
 def test_drop_single_label():
