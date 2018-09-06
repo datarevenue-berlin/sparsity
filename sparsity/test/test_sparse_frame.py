@@ -745,8 +745,30 @@ def test_groupby_agg(groupby_frame):
     res = groupby_frame.groupby_agg(
         level=0,
         agg_func=lambda x: x.mean(axis=0)
-    ).data.todense()
-    assert np.all(res.round() == np.identity(10))
+    )
+    assert np.all(res.data.todense().round() == np.identity(10))
+
+    assert np.all(res.columns == groupby_frame.columns)
+    assert np.all(res.index == groupby_frame.index.unique().sort_values())
+
+
+def test_groupby_agg_multiindex():
+    df = pd.DataFrame({'X': [1, 1, 1, 0],
+                       'Y': [0, 1, 0, 1],
+                       'gr': ['a', 'a', 'b', 'b'],
+                       'day': [10, 11, 11, 12]})
+    df = df.set_index(['day', 'gr'])
+    sf = SparseFrame(df)
+
+    correct = df.groupby(level=1).mean()
+    res = sf.groupby_agg(level=1, agg_func=lambda x: x.mean(axis=0))
+    assert np.all(res.index == correct.index)
+    assert np.all(res.columns == correct.columns)
+
+    correct = df.groupby(by='Y').mean()
+    res = sf.groupby_agg(by='Y', agg_func=lambda x: x.mean(axis=0))
+    assert np.all(res.index == correct.index)
+    assert np.all(res.columns == correct.columns)
 
 
 def test_init_with_pandas():
