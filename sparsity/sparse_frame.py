@@ -28,17 +28,7 @@ from sparsity.indexing import _CsrILocationIndexer, _CsrLocIndexer, \
 
 
 def _is_empty(data):
-    try:
-        if any(map(lambda x: x== 0, data.shape)):
-            return True
-        else:
-            return False
-    except:
-        pass
-
-    if len(data) == 0:
-        return True
-    elif isinstance(data, list) and sum(map(len, list)) == 0:
+    if any(map(lambda x: x == 0, data.shape)):
         return True
     return False
 
