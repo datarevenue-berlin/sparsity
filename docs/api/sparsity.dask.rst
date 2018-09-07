@@ -1,5 +1,5 @@
-sparsity.dask package
-=====================
+sparsity.dask sub-package
+=========================
 
 .. automodule:: sparsity.dask
     :members:

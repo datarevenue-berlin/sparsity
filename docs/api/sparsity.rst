@@ -6,13 +6,6 @@ sparsity package
     :undoc-members:
     :show-inheritance:
 
-Subpackages
------------
-
-.. toctree::
-
-    sparsity.dask
-
 Submodules
 ----------
 
