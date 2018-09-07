@@ -110,6 +110,7 @@ class SparseFrame(dask.base.DaskMethodsMixin):
     def to_delayed(self):
         return [Delayed(k, self.dask) for k in self.__dask_keys__()]
 
+    @derived_from(sp.SparseFrame)
     def assign(self, **kwargs):
         for k, v in kwargs.items():
             if not (isinstance(v, (Series, Scalar, pd.Series)) or

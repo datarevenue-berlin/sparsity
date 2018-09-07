@@ -1,5 +1,5 @@
 About Sparsity
-========
+==============
 
 Motivation
 ----------

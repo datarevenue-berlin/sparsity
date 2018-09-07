@@ -34,8 +34,8 @@ def _append_zero_row(csr):
 
 
 class SparseFrame(object):
-    """
-    Simple sparse table implementation. It adds pandas indexing abilities to a
+    """ Two dimensional, size-mutable, homogenous tabular data structure with
+    labeled axes (rows and columns). It adds pandas indexing abilities to a
     compressed row sparse frame  based on scipy.sparse.csr_matrix. This makes
     indexing along the first axis extremely efficient and cheap. Indexing along
     the second axis should be avoided if possible though.
@@ -48,15 +48,15 @@ class SparseFrame(object):
 
         Parameters
         ----------
-        data: np.array | pd.DataFrame
-            A numerical numpy array or a pandas DataFrame of homogeneous
-            data type.
-        index: array-like
-            labels for first axis.
-        columns: array-like
-            labels for second axis.
-        kwargs:
-            are passed to scipy.sparse.csr_matrix
+        data: sparse.csr_matrix | np.ndarray | pandas.DataFrame
+            Data to initialize matrix with. Can be one of above types, or
+            anything accepted by sparse.csr_matrix along with the correct
+            kwargs.
+        index: pd.Index or array-like
+            Index to use for resulting frame. Will default to RangeIndex if
+            input data has no indexing information and no index provided.
+        columns : pd.Index or array-like
+            Column labels to use for resulting frame. Defaults like in index.
         """
         if len(data.shape) > 2:
             raise ValueError("Only two dimensional data supported")
@@ -187,7 +187,7 @@ class SparseFrame(object):
                 dense = pd.DataFrame(dense.reshape(1, -1), index=self.index,
                                      columns=self.columns)
             else:
-                # need to copy as broadcast_to return read_only array
+                # need to copy, as broadcast_to returns read_only array
                 idx = np.broadcast_to(self.index, dense.shape[0])\
                      .copy()
                 dense = pd.DataFrame(dense, index=idx,
@@ -210,15 +210,19 @@ class SparseFrame(object):
             return self._columns
 
     def sum(self, *args, **kwargs):
+        """Sum elements."""
         return self.data.sum(*args, **kwargs)
 
     def mean(self, *args, **kwargs):
+        """Calculate mean(s)."""
         return self.data.mean(*args, **kwargs)
 
     def max(self, *args, **kwargs):
+        """Find maximum element(s)."""
         return self.data.max(*args, **kwargs)
 
     def min(self, *args, **kwargs):
+        """Find minimum element(s)"""
         return self.data.min(*args, **kwargs)
 
     def copy(self, *args, deep=True, **kwargs):
@@ -332,32 +336,55 @@ class SparseFrame(object):
 
     @property
     def index(self):
+        """ Return index labels
+
+        Returns
+        -------
+            index: pd.Index
+        """
         return self._index
 
     @property
     def columns(self):
+        """ Return column labels
+
+        Returns
+        -------
+            index: pd.Index
+        """
         return self._columns
 
     @property
     def data(self):
+        """ Return data matrix
+
+        Returns
+        -------
+            data: scipy.spar.csr_matrix
+        """
         if self.empty:
             return self._data
         return self._data[:-1, :]
 
     def groupby_agg(self, by=None, level=None, agg_func=None):
-        """Groupby aggregation (experimental).
+        """ Aggregate data using callable.
 
-        Groups data and applies function on each group.
+        The `by` and `level` arguments are mutually exclusive.
 
         Parameters
         ----------
-        by: str | array-like
-            column name or groupby labels
+        by: array-like, string
+            grouping array or grouping column name
         level: int
-            index level to use for groupby
+            which level from index to use if multiindex
         agg_func: callable
-            Function to execute in individual groups of data. Must accept
+            Function which will be applied to groups. Must accept
             a SparseFrame and needs to return a vector of shape (1, n_cols).
+
+        Returns
+        -------
+        sf: SparseFrame
+            aggregated result
         """
         by, cols = self._get_groupby_col(by, level)
         groups = pd.Index(np.arange(self.shape[0])).groupby(by)
@@ -374,6 +401,8 @@ class SparseFrame(object):
 
         Simple operation using sparse matrix multiplication.
         Expects result to be sparse as well.
+
+        The by and level arguments are mutually exclusive.
 
         Parameters
         ----------
@@ -485,6 +514,9 @@ class SparseFrame(object):
                                   index=new_index,
                                   columns=np.concatenate([self._columns,
                                                           other._columns]))
+        else:
+            raise ValueError('Axis must be either 0 or 1.')
+
         return res
 
     def __len__(self):
@@ -516,6 +548,7 @@ class SparseFrame(object):
 
     @property
     def values(self):
+        """CSR Matrix represenation of frame"""
         return self.data
 
     def sort_index(self):
@@ -532,12 +565,14 @@ class SparseFrame(object):
         return SparseFrame(data, index=index, columns=self.columns)
 
     def fillna(self, value):
-        """Replace NaN values in explicitly stored data.
+        """Replace NaN values in explicitly stored data with `value`.
 
         Parameters
         ----------
-        value:
-            value must be of same dtype as the underlying SparseFrame's data.
+        value: scalar
+            Value to use to fill holes. value must be of same dtype as
+            the underlying SparseFrame's data. If 0 is chosen
+            new matrix will have these values eliminated.
 
         Returns
         -------
@@ -545,6 +580,8 @@ class SparseFrame(object):
         """
         _data = self._data.copy()
         _data.data[np.isnan(self._data.data)] = value
+        if value == 0:
+            _data.eliminate_zeros()
         return SparseFrame(data=_data[:-1, :],
                            index=self.index, columns=self.columns)
 
@@ -830,16 +867,20 @@ class SparseFrame(object):
     def read_npz(cls, filename, storage_options=None):
         """Read from numpy npz format.
 
+        Reads the sparse frame from a npz archive.
+        Supports reading npz archives from remote locations
+        with GCSFS and S3FS.
+
         Parameters
         ----------
         filename: str
-            path to file
+            path or uri to location
         storage_options: dict
-            optional storage options for external filesystems like s3fs
+            further options for the underlying filesystem
 
         Returns
         -------
-        loaded: SparseFrame
+        sf: SparseFrame
         """
         return cls(*read_npz(filename, storage_options))
 
@@ -898,7 +939,7 @@ class SparseFrame(object):
 
         Returns
         -------
-        reindexed: SparseFrame
+            reindexed: SparseFrame
         """
 
         if labels is not None and index is None and columns is None:
@@ -941,7 +982,7 @@ class SparseFrame(object):
 
         Returns
         -------
-        reindexed: SparseFrame
+            reindexed: SparseFrame
         """
         if method is not None \
                 or not copy \
@@ -988,9 +1029,6 @@ class SparseFrame(object):
         storage_options: dict
             additional parameters to pass to FileSystem class;
             only useful when writing to remote storages
-        Returns
-        -------
-            None
         """
         to_npz(self, filename, block_size, storage_options)
 

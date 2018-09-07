@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# rtl_reco documentation build configuration file, created by
+# Sparsity documentation build configuration file, created by
 # sphinx-quickstart.
 #
 # This file is execfile()d with the current directory set to its containing dir.
@@ -13,6 +13,9 @@
 
 import os
 import sys
+
+from recommonmark.transform import AutoStructify
+
 import sparsity
 import sphinx_rtd_theme
 
@@ -26,10 +29,11 @@ import sphinx_rtd_theme
 # If your documentation needs a minimal Sphinx version, state it here.
 # needs_sphinx = '1.0'
 
+github_doc_root = "http://sparsity.github.com/"
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.napoleon']
+extensions = ['sphinx.ext.autodoc', 'sphinx.ext.napoleon', 'sphinx.ext.autosummary']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -252,3 +256,11 @@ texinfo_documents = [
 
 # How to display URL addresses: 'footnote', 'no', or 'inline'.
 # texinfo_show_urls = 'footnote'
+autosummary_generate = True
+html_sidebars = { '**': ['globaltoc.html', 'relations.html', 'sourcelink.html', 'searchbox.html'] }
+# At the bottom of conf.py
+def setup(app):
+    app.add_config_value('recommonmark_config', {
+            'url_resolver': lambda url: github_doc_root + url,
+            }, True)
+    app.add_transform(AutoStructify)
