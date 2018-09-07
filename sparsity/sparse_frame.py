@@ -50,10 +50,6 @@ def _append_zero_row(csr):
     )
 
 
-def _batch_get_loc(index: pd.Index, keys: list):
-    return [index.get_loc(key) for key in keys]
-
-
 class SparseFrame(object):
     """
     Simple sparse table based on scipy.sparse.csr_matrix
