@@ -386,7 +386,7 @@ class SparseFrame(object):
         sf: SparseFrame
             aggregated result
         """
-        by = self._get_groupby_col(by, level)
+        by, cols = self._get_groupby_col(by, level)
         groups = pd.Index(np.arange(self.shape[0])).groupby(by)
         res = sparse.csr_matrix((len(groups), self.shape[1]))
         new_idx = []
