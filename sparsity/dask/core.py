@@ -13,11 +13,10 @@ from dask.dataframe.core import (Scalar, Series, _emulate, _extract_meta,
                                  no_default, partial, partial_by_order,
                                  split_evenly, check_divisions, hash_shard,
                                  split_out_on_index, Index)
-from dask.dataframe.groupby import _apply_chunk
-from dask.dataframe.utils import _nonempty_index, make_meta
+from dask.dataframe.utils import _nonempty_index
 from dask.dataframe.utils import make_meta as dd_make_meta
 from dask.delayed import Delayed
-from dask.optimize import cull
+from dask.optimization import cull
 from dask.utils import derived_from
 from scipy import sparse
 from toolz import merge, remove, partition_all
@@ -65,9 +64,6 @@ class SparseFrame(dask.base.DaskMethodsMixin):
     def __dask_graph__(self):
         return self.dask
 
-    def __dask_keys__(self):
-        return self._keys()
-
     __dask_scheduler__ = staticmethod(dask.threaded.get)
 
     @staticmethod
@@ -112,7 +108,7 @@ class SparseFrame(dask.base.DaskMethodsMixin):
         return map_partitions(func, self, meta, *args, **kwargs)
 
     def to_delayed(self):
-        return [Delayed(k, self.dask) for k in self._keys()]
+        return [Delayed(k, self.dask) for k in self.__dask_keys__()]
 
     def assign(self, **kwargs):
         for k, v in kwargs.items():
@@ -126,7 +122,7 @@ class SparseFrame(dask.base.DaskMethodsMixin):
         df2 = self._meta.assign(**_extract_meta(kwargs))
         return elemwise(methods.assign, self, *pairs, meta=df2)
 
-    def _keys(self):
+    def __dask_keys__(self):
         return [(self._name, i) for i in range(self.npartitions)]
 
     @property
@@ -572,8 +568,8 @@ def elemwise(op, *args, **kwargs):
              if not isinstance(arg, (_Frame, Scalar, SparseFrame))]
 
     # Get dsks graph tuple keys and adjust the key length of Scalar
-    keys = [d._keys() * n if isinstance(d, Scalar) or _is_broadcastable(d)
-            else d._keys() for d in dasks]
+    keys = [d.__dask_keys__() * n if isinstance(d, Scalar) or _is_broadcastable(d)
+            else d.__dask_keys__() for d in dasks]
 
     if other:
         dsk = {(_name, i):
