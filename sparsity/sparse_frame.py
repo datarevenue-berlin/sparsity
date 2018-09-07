@@ -48,8 +48,8 @@ class SparseFrame(object):
 
         Parameters
         ----------
-        data: scipy sparse matrix, numpy ndarray, pandas.DataFrame
-            data to initalize matrix with. Can be one of above types, or
+        data: sparse.csr_matrix | np.ndarray | pandas.DataFrame
+            Data to initialize matrix with. Can be one of above types, or
             anything accepted by sparse.csr_matrix along with the correct
             kwargs.
         index: pd.Index or array-like
@@ -514,6 +514,9 @@ class SparseFrame(object):
                                   index=new_index,
                                   columns=np.concatenate([self._columns,
                                                           other._columns]))
+        else:
+            raise ValueError('Axis must be either 0 or 1.')
+
         return res
 
     def __len__(self):
