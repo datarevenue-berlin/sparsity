@@ -14,11 +14,6 @@ from sparsity.io import _csr_to_dict
 
 from .conftest import tmpdir
 
-try:
-    import traildb
-except (ImportError, OSError):
-    traildb = False
-
 
 @contextmanager
 def mock_s3_fs(bucket, data=None):
@@ -59,6 +54,8 @@ def test_empty_init():
     sf = SparseFrame(np.array([]), index=[], columns=['A', 'B'])
     assert sf.data.shape == (0, 2)
 
+    sf = SparseFrame(np.array([]), index=['A', 'B'], columns=[])
+    assert sf.data.shape == (2, 0)
 
 def test_groupby(groupby_frame):
     t = groupby_frame
@@ -125,10 +122,9 @@ def test_mutually_exclusive_join():
     left_ax0 = SparseFrame(np.identity(5), columns=np.arange(5))
     right_ax0 = SparseFrame(np.identity(5), columns=np.arange(5, 10))
 
-    with pytest.raises(NotImplementedError):  # FIXME: remove when repaired
-        res_ax0 = left_ax0.join(right_ax0, axis=0)
-        assert np.all(res_ax0.data.todense() == correct), \
-            "Joining along axis 0 failed."
+    res_ax0 = left_ax0.join(right_ax0, axis=0)
+    assert np.all(res_ax0.data.todense() == correct), \
+        "Joining along axis 0 failed."
 
     assert np.all(res_ax1.data.todense() == correct), \
         "Joining along axis 1 failed."
@@ -584,19 +580,6 @@ def test_csr_one_hot_series_too_little_categories(sampledata):
         sparse_one_hot(sampledata(49), categories={'weekday': categories})
 
 
-@pytest.mark.skipif(traildb is False, reason="TrailDB not installed")
-def test_read_traildb(testdb):
-    res = SparseFrame.read_traildb(testdb, 'action')
-    assert res.shape == (9, 3)
-
-
-@pytest.mark.skipif(traildb is False, reason="TrailDB not installed")
-def test_add_traildb(testdb):
-    simple = SparseFrame.read_traildb(testdb, 'action')
-    doubled = simple.add(simple)
-    assert np.all(doubled.data.todense() == simple.data.todense() * 2)
-
-
 def test_npz_io(complex_example):
     sf, second, third = complex_example
     sf.to_npz('/tmp/sparse.npz')
@@ -712,11 +695,22 @@ def test_drop_duplicate_idx():
 
 
 def test_repr():
+    sf = SparseFrame(sparse.csr_matrix((2, 3)))
+    res = sf.__repr__()
+    assert isinstance(res, str)
+    assert len(res.splitlines()) == 1 + 2 + 2  # column names + 2 rows + descr.
+
     sf = SparseFrame(sparse.csr_matrix((10, 10000)))
     res = sf.__repr__()
     assert isinstance(res, str)
     assert '10x10000' in res
     assert '0 stored' in res
+    assert len(res.splitlines()) == 1 + 5 + 2
+
+    sf = SparseFrame(sparse.csr_matrix((10000, 10000)))
+    res = sf.__repr__()
+    assert isinstance(res, str)
+    assert len(res.splitlines()) == 1 + 5 + 2
 
     sf = SparseFrame(np.array([]), index=[], columns=['A', 'B'])
     res = sf.__repr__()
@@ -733,8 +727,30 @@ def test_groupby_agg(groupby_frame):
     res = groupby_frame.groupby_agg(
         level=0,
         agg_func=lambda x: x.mean(axis=0)
-    ).data.todense()
-    assert np.all(res.round() == np.identity(10))
+    )
+    assert np.all(res.data.todense().round() == np.identity(10))
+
+    assert np.all(res.columns == groupby_frame.columns)
+    assert np.all(res.index == groupby_frame.index.unique().sort_values())
+
+
+def test_groupby_agg_multiindex():
+    df = pd.DataFrame({'X': [1, 1, 1, 0],
+                       'Y': [0, 1, 0, 1],
+                       'gr': ['a', 'a', 'b', 'b'],
+                       'day': [10, 11, 11, 12]})
+    df = df.set_index(['day', 'gr'])
+    sf = SparseFrame(df)
+
+    correct = df.groupby(level=1).mean()
+    res = sf.groupby_agg(level=1, agg_func=lambda x: x.mean(axis=0))
+    assert np.all(res.index == correct.index)
+    assert np.all(res.columns == correct.columns)
+
+    correct = df.groupby(by='Y').mean()
+    res = sf.groupby_agg(by='Y', agg_func=lambda x: x.mean(axis=0))
+    assert np.all(res.index == correct.index)
+    assert np.all(res.columns == correct.columns)
 
 
 def test_init_with_pandas():
@@ -747,7 +763,13 @@ def test_init_with_pandas():
     sf = SparseFrame(df)
     assert sf.shape == (5, 5)
     assert isinstance(sf.index, pd.MultiIndex)
-    assert sf.columns.tolist() == list('ABCDE')
+    assert (sf.index == df.index).all()
+    assert (sf.columns == df.columns).all()
+
+    with pytest.warns(SyntaxWarning):
+        sf = SparseFrame(df, index=np.arange(10, 15), columns=list('VWXYZ'))
+    assert sf.index.tolist() == np.arange(10, 15).tolist()
+    assert sf.columns.tolist() == list('VWXYZ')
 
     s = pd.Series(np.ones(10))
     sf = SparseFrame(s)
@@ -766,20 +788,28 @@ def test_multiply_rowwise():
     other = np.arange(5)
     msg = "Row wise multiplication failed"
 
-    # nd.array
-    other = other.reshape(1, -1)
+    # list
+    res = sf.multiply(list(other), axis=0)
+    assert np.all(res.sum(axis=1).T == 5 * other), msg
+
+    # 1D array
     res = sf.multiply(other, axis=0)
-    assert np.all(res.sum(axis=0) == 5 * other), msg
+    assert np.all(res.sum(axis=1).T == 5 * other), msg
+
+    # 2D array
+    _other = other.reshape(-1, 1)
+    res = sf.multiply(_other, axis=0)
+    assert np.all(res.sum(axis=1).T == 5 * other), msg
 
     # SparseFrame
     _other = SparseFrame(other)
     res = sf.multiply(_other, axis=0)
-    assert np.all(res.sum(axis=0) == 5 * other), msg
+    assert np.all(res.sum(axis=1).T == 5 * other), msg
 
     # csr_matrix
     _other = _other.data
     res = sf.multiply(_other, axis=0)
-    assert np.all(res.sum(axis=0) == 5 * other), msg
+    assert np.all(res.sum(axis=1).T == 5 * other), msg
 
 
 def test_multiply_colwise():
@@ -788,21 +818,37 @@ def test_multiply_colwise():
     other = np.arange(5)
     msg = "Column wise multiplication failed"
 
-    # nd.array
-    other = other.reshape(-1, 1)
+    # list
+    res = sf.multiply(list(other), axis=1)
+    assert np.all(res.sum(axis=0) == 5 * other), msg
+
+    # 1D array
     res = sf.multiply(other, axis=1)
-    assert np.all(res.sum(axis=1) == 5 * other), msg
+    assert np.all(res.sum(axis=0) == 5 * other), msg
+
+    # 2D array
+    _other = other.reshape(1, -1)
+    res = sf.multiply(_other, axis=1)
+    assert np.all(res.sum(axis=0) == 5 * other), msg
 
     # SparseFrame
     _other = SparseFrame(other)
     res = sf.multiply(_other, axis=1)
-    assert np.all(res.sum(axis=1) == 5 * other), msg
+    assert np.all(res.sum(axis=0) == 5 * other), msg
 
     # csr_matrix
     _other = _other.data
     _other.toarray()
     res = sf.multiply(_other, axis=1)
-    assert np.all(res.sum(axis=1) == 5 * other), msg
+    assert np.all(res.sum(axis=0) == 5 * other), msg
+
+
+def test_multiply_wrong_axis():
+    sf = SparseFrame(np.ones((5, 5)))
+    other = np.arange(5)
+
+    with pytest.raises(ValueError):
+        sf.multiply(other, axis=2)
 
 
 def test_drop_single_label():
@@ -915,3 +961,18 @@ def test_loc_duplicate_index():
 
     assert len(sf.loc[:, 'U'].columns) == 2
     assert np.all(sf.loc[:, 'U'].todense().values == np.identity(5)[:, :2])
+
+
+def test_error_unaligned_indices():
+    data = np.identity(5)
+    with pytest.raises(ValueError) as e:
+        SparseFrame(data, index=np.arange(6))
+        assert '(5, 5)' in str(e) and '(6, 5)' in str(e)
+
+    with pytest.raises(ValueError) as e:
+        SparseFrame(data, columns=np.arange(6))
+        assert '(5, 5)' in str(e) and '(5, 6)' in str(e)
+
+    with pytest.raises(ValueError) as e:
+        SparseFrame(data, columns=np.arange(6), index=np.arange(6))
+        assert '(5, 5)' in str(e) and '(6, 6)' in str(e)
