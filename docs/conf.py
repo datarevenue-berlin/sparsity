@@ -245,7 +245,7 @@ man_pages = [
 texinfo_documents = [
     ('index', 'Sparsity', u'Sparsity Documentation',
      u"Datarevenue", 'Sparsity',
-     'Sparsity discovery tool', 'Miscellaneous'),
+     'Sparsity sparse data processing', 'Miscellaneous'),
 ]
 
 # Documents to append as an appendix to all manuals.

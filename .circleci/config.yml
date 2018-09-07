@@ -1,0 +1,11 @@
+version: 2
+jobs:
+  build:
+    working_directory: ~/sparsity
+    docker:
+      - image: drtools/dask:latest
+    steps:
+      - checkout
+      - run: pip install pytest pytest-cov moto .
+      - run: py.test --cov sparsity --cov-report xml sparsity
+      - run: bash <(curl -s https://codecov.io/bash)
