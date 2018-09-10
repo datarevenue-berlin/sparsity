@@ -8,7 +8,7 @@ DataFrame-like API to work with sparse data.
 In combination with dask it provides support to execute complex operations on 
 a concurrent/distributed level.
 
-More information and examples can be found in the [documentation](https://datarevenue-berlin.github.io/sparsity/).
+More information and examples can be found in the [documentation](https://sparsity.readthedocs.io).
 
 
 ## Installation
