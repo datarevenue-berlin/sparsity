@@ -705,12 +705,12 @@ def test_repr():
     assert isinstance(res, str)
     assert '10x10000' in res
     assert '0 stored' in res
-    assert len(res.splitlines()) == 1 + 5 + 2
+    assert len(res.splitlines()) == 15
 
     sf = SparseFrame(sparse.csr_matrix((10000, 10000)))
     res = sf.__repr__()
     assert isinstance(res, str)
-    assert len(res.splitlines()) == 1 + 5 + 2
+    assert len(res.splitlines()) == 15
 
     sf = SparseFrame(np.array([]), index=[], columns=['A', 'B'])
     res = sf.__repr__()
