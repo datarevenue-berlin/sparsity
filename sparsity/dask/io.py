@@ -3,11 +3,13 @@ from math import ceil
 
 import numpy as np
 import pandas as pd
+from dask import delayed, base
 from dask.base import tokenize
 from dask.dataframe.io.io import sorted_division_locations
 
 import sparsity as sp
 from sparsity.dask.core import SparseFrame, _make_meta
+from sparsity.io import _write_dict_npz, _open_npz_archive
 
 _sorted = sorted
 
@@ -71,7 +73,7 @@ def from_pandas(df, npartitions=None, chunksize=None, name=None):
     return SparseFrame(dsk, name, meta, divisions)
 
 
-def read_npz(path, sorted=False):
+def read_npz(path, read_divisions=False, storage_options=None):
     """
     Read SparseFrame from npz archives
 
@@ -80,9 +82,10 @@ def read_npz(path, sorted=False):
     path: str
         path to load files from can contain '*' to
         reference multiple files
-    sorted: bool
+    read_divisions: bool
         if the files are sorted read the index for each file
-        to obtain divions
+        to obtain divions. If files are not sorted this will
+        raise and error.
 
     Returns
     -------
@@ -90,20 +93,32 @@ def read_npz(path, sorted=False):
     """
     dsk = {}
     name = 'read_npz-{}'.format(tokenize(path))
-    _paths = _sorted(list(glob(path)))
-    archive = np.load(_paths[0])
+    loader = None
+    divisions = None
+    try:
+        loader = _open_npz_archive(path.split('*')[0] + 'metadata.npz',
+                                   storage_options)
+        divisions = loader['divisions']
+        _paths = loader['partitions']
+    except FileNotFoundError:
+        _paths = _sorted(list(glob(path)))
+    finally:
+        if loader:
+            loader.close()
+    archive = _open_npz_archive(_paths[0], storage_options)
 
     meta_idx, meta_cols = archive['frame_index'], archive['frame_columns']
     meta = sp.SparseFrame(np.empty(shape=(0, len(meta_cols))),
                           index=meta_idx[:0],
                           columns=meta_cols)
-    for i, p in enumerate(_paths):
-        dsk[name, i] = (sp.SparseFrame.read_npz, p)
 
-    if sorted:
+    for i, p in enumerate(_paths):
+        dsk[name, i] = (sp.SparseFrame.read_npz, p, storage_options)
+
+    if divisions is None and read_divisions:
         level = 0 if isinstance(meta_idx, pd.MultiIndex) else None
         divisions = _npz_read_divisions(_paths, level=level)
-    else:
+    elif divisions is None:
         divisions = [None] * (len(_paths) + 1)
 
     return SparseFrame(dsk, name, meta, divisions=divisions)
@@ -118,7 +133,6 @@ def _npz_read_divisions(paths, level=None):
         idx = archive['frame_index']
         if level is not None:
             idx = idx.get_level_values(level)
-        assert idx.is_monotonic_increasing
         istart = idx[0]
         istop = idx[-1]
         divisions.append(istart)
@@ -133,3 +147,35 @@ def _npz_read_divisions(paths, level=None):
             ))
 
     return divisions
+
+
+def write_npz_metadata(writes, divisions, paths, fn,
+                       block_size, storage_options):
+    data = {}
+    data['divisions'] = np.asarray(divisions)
+    data['partitions'] = np.asarray(paths)
+
+    _write_dict_npz(data, fn, block_size, storage_options)
+
+
+def to_npz(sf: SparseFrame, path: str, block_size=None,
+           storage_options=None, compute=True):
+    if '*' not in path:
+        raise ValueError('Path needs to contain "*" wildcard.')
+
+    tmpl_func = path.replace('*', '{0:06d}').format
+    metadata_fn = path.split('*')[0] + 'metadata.npz'
+    paths = list(map(tmpl_func, range(sf.npartitions)))
+
+    write = delayed(sp.SparseFrame.to_npz, pure=False)
+    writes = [write(part, fn, block_size, storage_options)
+              for fn, part in zip(paths, sf.to_delayed())]
+
+    write_metadata = delayed(write_npz_metadata, pure=False)
+    out = write_metadata(writes, sf.divisions, paths, metadata_fn,
+                         block_size, storage_options)
+
+    if compute:
+        out.compute()
+        return None
+    return out
