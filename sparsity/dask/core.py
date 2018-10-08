@@ -36,18 +36,22 @@ def _make_meta(inp):
             return sp.SparseFrame(meta)
         return meta
 
+
 def _meta_nonempty(x):
     idx = _nonempty_index(x.index)
     return sp.SparseFrame(sparse.csr_matrix((len(idx), len(x.columns))),
                      index=idx, columns=x.columns)
 
+
 def optimize(dsk, keys, **kwargs):
     dsk, _ = cull(dsk, keys)
     return dsk
 
+
 def finalize(results):
     results = [r for r in results if not r.empty]
     return sp.SparseFrame.vstack(results)
+
 
 class SparseFrame(dask.base.DaskMethodsMixin):
 
