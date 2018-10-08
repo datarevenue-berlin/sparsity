@@ -24,6 +24,7 @@ setup(
         'scipy>=0.18.1',
         'numpy>=1.12.0',
         's3fs>=0.1.0',
+        'dask<=0.19.2'
     ],
     test_requires=[
         'moto',
