@@ -1,5 +1,5 @@
 from io import BytesIO
-from pathlib import PurePath
+from pathlib import PurePath, Path
 from urllib.parse import urlparse
 
 import numpy as np
@@ -67,6 +67,7 @@ def _write_dict_npz(data, filename, block_size, storage_options):
     filename = path2str(filename)
     protocol = urlparse(filename).scheme or 'file'
     if protocol == 'file':
+        Path(filename).parent.mkdir(parents=True, exist_ok=True)
         with open(filename, 'wb') as fp:
             np.savez(fp, **data)
     else:
