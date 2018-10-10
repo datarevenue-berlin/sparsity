@@ -274,10 +274,16 @@ class SparseFrame(dask.base.DaskMethodsMixin):
         return res
 
     def rename(self, columns):
-        #TODO: add test
         _meta = self._meta.rename(columns=columns)
         return self.map_partitions(sp.SparseFrame.rename, meta=_meta,
                                    columns=columns)
+
+    def drop(self, labels, axis=1):
+        if axis != 1:
+            raise NotImplementedError('Axis != 1 is currently not supported.')
+        _meta = self._meta.drop(labels=labels)
+        return self.map_partitions(sp.SparseFrame.drop, meta=_meta,
+                                   labels=labels)
 
     def __repr__(self):
         return \
