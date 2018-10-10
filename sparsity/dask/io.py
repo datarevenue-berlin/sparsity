@@ -164,6 +164,9 @@ def to_npz(sf: SparseFrame, path: str, block_size=None,
     if '*' not in path:
         raise ValueError('Path needs to contain "*" wildcard.')
 
+    if '.npz' not in path:
+        path += '.npz'
+
     tmpl_func = path.replace('*', '{0:06d}').format
     metadata_fn = path.split('*')[0] + 'metadata.npz'
     paths = list(map(tmpl_func, range(sf.npartitions)))
