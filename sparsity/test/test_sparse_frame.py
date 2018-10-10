@@ -710,7 +710,12 @@ def test_repr():
     res = sf.__repr__()
     assert isinstance(res, str)
 
-    sf = SparseFrame(np.array([]), index=[], columns=['A', 'B'])
+    sf = SparseFrame(np.empty(shape=(0, 2)), index=[], columns=['A', 'B'])
+    res = sf.__repr__()
+    assert isinstance(res, str)
+
+    sf = SparseFrame(np.empty(shape=(0, 200)), index=[],
+                     columns=np.arange(200))
     res = sf.__repr__()
     assert isinstance(res, str)
 

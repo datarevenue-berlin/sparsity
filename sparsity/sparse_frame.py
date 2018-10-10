@@ -176,7 +176,8 @@ class SparseFrame(object):
 
         if pandas:
             if self.empty:
-                dense = pd.DataFrame([], columns=self.columns,
+                dense = pd.DataFrame(np.empty(shape=self.shape),
+                                     columns=self.columns,
                                      index=self._index[:0])
             elif len(dense.shape) == 1 and \
                     self.data.shape[1] == 1:
