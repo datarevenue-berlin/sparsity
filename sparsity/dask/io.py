@@ -6,9 +6,10 @@ import pandas as pd
 from dask import delayed, base
 from dask.base import tokenize
 from dask.dataframe.io.io import sorted_division_locations
+from dask.dataframe.utils import make_meta
 
 import sparsity as sp
-from sparsity.dask.core import SparseFrame, _make_meta
+from sparsity.dask.core import SparseFrame
 from sparsity.io import _write_dict_npz, _open_npz_archive
 
 _sorted = sorted
@@ -69,7 +70,7 @@ def from_pandas(df, npartitions=None, chunksize=None, name=None):
     dsk = dict(((name, i), sp.SparseFrame(df.iloc[start: stop]))
                for i, (start, stop) in enumerate(zip(locations[:-1],
                                                      locations[1:])))
-    meta = _make_meta(df)
+    meta = make_meta(df)
     return SparseFrame(dsk, name, meta, divisions)
 
 
