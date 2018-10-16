@@ -268,9 +268,9 @@ class SparseFrame(object):
             pass
 
         if axis in [0, 'index']:
-            other = np.asarray(other).reshape(-1, 1)
-        elif axis in [1, 'columns']:
             other = np.asarray(other).reshape(1, -1)
+        elif axis in [1, 'columns']:
+            other = np.asarray(other).reshape(-1, 1)
         else:
             raise ValueError("Axis should be one of 0, 1, 'index', 'columns'.")
 

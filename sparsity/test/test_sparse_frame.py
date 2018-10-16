@@ -784,63 +784,64 @@ def test_init_with_pandas():
 
 def test_multiply_rowwise():
     # Row wise multiplication with different types
-    sf = SparseFrame(np.ones((5, 5)))
+    sf = SparseFrame(np.ones((10, 5)))
     other = np.arange(5)
     msg = "Row wise multiplication failed"
 
     # list
     res = sf.multiply(list(other), axis=0)
-    assert np.all(res.sum(axis=1).T == 5 * other), msg
+    assert np.all(res.values == sf.values.multiply(other).todense()), msg
 
     # 1D array
     res = sf.multiply(other, axis=0)
-    assert np.all(res.sum(axis=1).T == 5 * other), msg
+    assert np.all(res.values == sf.values.multiply(other).todense()), msg
 
     # 2D array
     _other = other.reshape(-1, 1)
     res = sf.multiply(_other, axis=0)
-    assert np.all(res.sum(axis=1).T == 5 * other), msg
+    assert np.all(res.values == sf.values.multiply(other).todense()), msg
 
     # SparseFrame
     _other = SparseFrame(other)
     res = sf.multiply(_other, axis=0)
-    assert np.all(res.sum(axis=1).T == 5 * other), msg
+    assert np.all(res.values == sf.values.multiply(other).todense()), msg
 
     # csr_matrix
     _other = _other.data
     res = sf.multiply(_other, axis=0)
-    assert np.all(res.sum(axis=1).T == 5 * other), msg
+    assert np.all(res.values == sf.values.multiply(other).todense()), msg
 
 
 def test_multiply_colwise():
     # Column wise multiplication with different types
-    sf = SparseFrame(np.ones((5, 5)))
+    sf = SparseFrame(np.ones((5, 10)))
     other = np.arange(5)
+    other_cv = other.reshape(-1, 1)
     msg = "Column wise multiplication failed"
 
     # list
     res = sf.multiply(list(other), axis=1)
-    assert np.all(res.sum(axis=0) == 5 * other), msg
+    assert np.all(res.values == sf.values.multiply(other_cv).todense()), msg
 
     # 1D array
     res = sf.multiply(other, axis=1)
-    assert np.all(res.sum(axis=0) == 5 * other), msg
+    assert np.all(res.values == sf.values.multiply(other_cv).todense()), msg
 
     # 2D array
     _other = other.reshape(1, -1)
     res = sf.multiply(_other, axis=1)
-    assert np.all(res.sum(axis=0) == 5 * other), msg
+    assert np.all(res.values == sf.values.multiply(other_cv).todense()), msg
 
     # SparseFrame
     _other = SparseFrame(other)
     res = sf.multiply(_other, axis=1)
-    assert np.all(res.sum(axis=0) == 5 * other), msg
+    assert np.all(res.values == sf.values.multiply(other_cv).todense()), msg
 
     # csr_matrix
     _other = _other.data
     _other.toarray()
     res = sf.multiply(_other, axis=1)
-    assert np.all(res.sum(axis=0) == 5 * other), msg
+    assert np.all(res.values == sf.values.multiply(other_cv).todense()), msg
 
 
 def test_multiply_wrong_axis():
