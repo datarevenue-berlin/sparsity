@@ -88,7 +88,7 @@ def one_hot_encode(ddf, column=None, categories=None, index_col=None,
                              prefixes=prefixes,
                              ignore_cat_order_mismatch=ignore_cat_order_mismatch
                              ).columns
-    meta = sp.SparseFrame(np.array([]), columns=columns,
+    meta = sp.SparseFrame(np.empty(shape=(0, len(columns))), columns=columns,
                           index=idx_meta)
 
     dsf = ddf.map_partitions(sparse_one_hot,

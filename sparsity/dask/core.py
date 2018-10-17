@@ -12,9 +12,8 @@ from dask.dataframe.core import (Scalar, Series, _emulate, _extract_meta,
                                  _Frame, _maybe_from_pandas, apply, funcname,
                                  no_default, partial, partial_by_order,
                                  split_evenly, check_divisions, hash_shard,
-                                 split_out_on_index, Index)
-from dask.dataframe.utils import _nonempty_index
-from dask.dataframe.utils import make_meta as dd_make_meta
+                                 split_out_on_index, Index, get_parallel_type)
+from dask.dataframe.utils import _nonempty_index, make_meta, meta_nonempty
 from dask.delayed import Delayed
 from dask.optimization import cull
 from dask.utils import derived_from
@@ -25,19 +24,22 @@ import sparsity as sp
 from sparsity.dask.indexing import _LocIndexer
 
 
-def _make_meta(inp):
+@get_parallel_type.register(sp.SparseFrame)
+def get_parallel_type_sparsity(_):
+    return SparseFrame
+
+
+@make_meta.register(sp.SparseFrame)
+def make_meta_sparsity(inp):
     if isinstance(inp, sp.SparseFrame) and inp.empty:
         return inp
     if isinstance(inp, sp.SparseFrame):
         return inp.iloc[:0]
     else:
-        meta = dd_make_meta(inp)
-        if isinstance(meta, pd.core.generic.NDFrame):
-            return sp.SparseFrame(meta)
-        return meta
+        raise NotImplementedError("Can't make meta for type: {}"
+                                  .format(str(type(inp))))
 
-
-def _meta_nonempty(x):
+@meta_nonempty.register(sp.SparseFrame)def meta_nonempty_sparsity(x):
     idx = _nonempty_index(x.index)
     return sp.SparseFrame(sparse.csr_matrix((len(idx), len(x.columns))),
                      index=idx, columns=x.columns)
@@ -56,9 +58,15 @@ def finalize(results):
 class SparseFrame(dask.base.DaskMethodsMixin):
 
     def __init__(self, dsk, name, meta, divisions=None):
+        if isinstance(meta, SparseFrame):
+            # TODO: remove this case once we subclass from dask._Frame
+            meta = meta._meta
+        if not isinstance(meta, sp.SparseFrame):
+            meta = sp.SparseFrame(meta)
+
         self.dask = dsk
         self._name = name
-        self._meta = _make_meta(meta)
+        self._meta = make_meta(meta)
 
         self.divisions = tuple(divisions)
         self.ndim = 2
@@ -87,7 +95,7 @@ class SparseFrame(dask.base.DaskMethodsMixin):
 
     @property
     def _meta_nonempty(self):
-        return _meta_nonempty(self._meta)
+        return meta_nonempty_sparsity(self._meta)
 
     @property
     def columns(self):
@@ -800,6 +808,11 @@ def apply_concat_apply(args, chunk=None, aggregate=None, combine=None,
     divisions = [None] * (split_out + 1)
 
     return SparseFrame(dsk, b, meta, divisions)
+
+
+@get_parallel_type.register(SparseFrame)
+def get_parallel_type_distributed(o):
+    return get_parallel_type(o._meta)
 
 
 normalize_token.register((SparseFrame,), lambda a: a._name)

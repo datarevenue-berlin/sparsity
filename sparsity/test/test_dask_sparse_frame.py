@@ -52,6 +52,9 @@ def test_map_partitions():
 def test_loc(iindexer, correct_shape):
     df = pd.DataFrame(np.random.rand(10, 2),
                       index=list('ABCDEFGHIJ'))
+    ddf = dd.from_pandas(df, npartitions=2)
+    ddf.loc[iindexer]
+
     dsf = dsp.from_pandas(df, npartitions=2)
     fut = dsf.loc[iindexer]
     assert fut._meta.empty
