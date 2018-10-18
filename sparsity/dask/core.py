@@ -39,7 +39,8 @@ def make_meta_sparsity(inp):
         raise NotImplementedError("Can't make meta for type: {}"
                                   .format(str(type(inp))))
 
-@meta_nonempty.register(sp.SparseFrame)def meta_nonempty_sparsity(x):
+@meta_nonempty.register(sp.SparseFrame)
+def meta_nonempty_sparsity(x):
     idx = _nonempty_index(x.index)
     return sp.SparseFrame(sparse.csr_matrix((len(idx), len(x.columns))),
                      index=idx, columns=x.columns)
@@ -267,7 +268,14 @@ class SparseFrame(dask.base.DaskMethodsMixin):
         if idx is not None:
             raise NotImplementedError('Only column or level supported')
         new_name = self._meta.index.names[level] if level else column
-        meta = self._meta.set_index(pd.Index([], name=new_name))
+
+        if level is not None:
+            new_idx = self._meta.index.get_level_values(level)
+        else:
+            new_idx = pd.Index(np.empty((0,0), dtype=self._meta.values.dtype))
+        new_idx.name = new_name
+
+        meta = self._meta.set_index(idx=new_idx)
         res = self.map_partitions(sp.SparseFrame.set_index, meta=meta,
                                   column=column, idx=idx, level=level)
         res.divisions = [None] * ( self.npartitions + 1)
