@@ -295,34 +295,6 @@ def test_existing_column_assign_number():
         assert np.all(correct == sf.data.todense())
 
 
-@pytest.fixture()
-def complex_example():
-    first = np.identity(10)
-    second = np.zeros((4, 10))
-    third = np.zeros((4, 10))
-    second[[0, 1, 2, 3], [2, 3, 4, 5]] = 10
-    third[[0, 1, 2, 3], [6, 7, 8, 9]] = 20
-
-    shuffle_idx = np.arange(10)
-    np.random.shuffle(shuffle_idx)
-
-    first = SparseFrame(first[shuffle_idx],
-                        index=np.arange(10)[shuffle_idx])
-
-    shuffle_idx = np.arange(4)
-    np.random.shuffle(shuffle_idx)
-
-    second = SparseFrame(second[shuffle_idx],
-                         index=np.arange(2, 6)[shuffle_idx])
-
-    shuffle_idx = np.arange(4)
-    np.random.shuffle(shuffle_idx)
-
-    third = SparseFrame(third[shuffle_idx],
-                        index=np.arange(6, 10)[shuffle_idx])
-    return first, second, third
-
-
 def test_add_total_overlap(complex_example):
     first, second, third = complex_example
     correct = first.sort_index().data.todense()
@@ -862,6 +834,12 @@ def test_drop_single_label():
     correct = np.identity(5)[:, 1:]
     assert sf.columns.tolist() == list('BCDE')
     np.testing.assert_array_equal(sf.data.todense(), correct)
+
+
+def test_drop_non_existing_label():
+    old_names = list('ABCDE')
+    sf = SparseFrame(np.identity(5), columns=old_names)
+    sf = sf.drop('Z', axis=1)
 
 
 def test_drop_multiple_labels():

@@ -37,8 +37,8 @@ def sampledata():
 @pytest.fixture()
 def sample_frame_labels():
     return SparseFrame(np.identity(5),
-                       columns = list('ABCDE'),
-                       index = list('VWXYZ'))
+                       columns=list('ABCDE'),
+                       index=list('VWXYZ'))
 
 @pytest.fixture()
 def weekdays():
@@ -94,6 +94,34 @@ def clickstream():
         ),
     index=pd.date_range("2016-01-01", periods=100))
     return df
+
+
+@pytest.fixture()
+def complex_example():
+    first = np.identity(10)
+    second = np.zeros((4, 10))
+    third = np.zeros((4, 10))
+    second[[0, 1, 2, 3], [2, 3, 4, 5]] = 10
+    third[[0, 1, 2, 3], [6, 7, 8, 9]] = 20
+
+    shuffle_idx = np.arange(10)
+    np.random.shuffle(shuffle_idx)
+
+    first = SparseFrame(first[shuffle_idx],
+                        index=np.arange(10)[shuffle_idx])
+
+    shuffle_idx = np.arange(4)
+    np.random.shuffle(shuffle_idx)
+
+    second = SparseFrame(second[shuffle_idx],
+                         index=np.arange(2, 6)[shuffle_idx])
+
+    shuffle_idx = np.arange(4)
+    np.random.shuffle(shuffle_idx)
+
+    third = SparseFrame(third[shuffle_idx],
+                        index=np.arange(6, 10)[shuffle_idx])
+    return first, second, third
 
 
 @contextmanager

@@ -136,6 +136,10 @@ class SparseFrame(dask.base.DaskMethodsMixin):
         df2 = self._meta.assign(**_extract_meta(kwargs))
         return elemwise(methods.assign, self, *pairs, meta=df2)
 
+    @derived_from(sp.SparseFrame)
+    def add(self, other, how='outer', fill_value=0,):
+        return elemwise(sp.SparseFrame.add, self, other, meta=self._meta)
+
     def __dask_keys__(self):
         return [(self._name, i) for i in range(self.npartitions)]
 
@@ -278,7 +282,7 @@ class SparseFrame(dask.base.DaskMethodsMixin):
         meta = self._meta.set_index(idx=new_idx)
         res = self.map_partitions(sp.SparseFrame.set_index, meta=meta,
                                   column=column, idx=idx, level=level)
-        res.divisions = [None] * ( self.npartitions + 1)
+        res.divisions = tuple([None] * ( self.npartitions + 1))
         return res
 
     def rename(self, columns):

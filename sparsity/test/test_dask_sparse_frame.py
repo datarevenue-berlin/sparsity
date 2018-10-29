@@ -288,6 +288,23 @@ def test_distributed_join(how):
 
     pdt.assert_frame_equal(correct, res)
 
+
+def test_add():
+    df = pd.DataFrame(np.identity(12))
+    df2 = df.copy()
+    df2.index += 1
+
+    sf1 = sp.SparseFrame(df)
+    sf2 = sp.SparseFrame(df2)
+    correct = sf1.add(sf2).todense()
+
+    dsf = dsp.from_pandas(df, npartitions=4)
+    dsf2 = dsp.from_pandas(df2, npartitions=4)
+
+    res = dsf.add(dsf2).compute().todense()
+    pdt.assert_frame_equal(res, correct)
+
+
 @pytest.mark.parametrize('idx', [
     np.random.choice([uuid4() for i in range(1000)], size=10000),
     np.random.randint(0, 10000, 10000),
