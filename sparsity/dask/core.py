@@ -52,6 +52,8 @@ def optimize(dsk, keys, **kwargs):
 
 
 def finalize(results):
+    if all(map(lambda x: x.empty, results)):
+        return results[0]
     results = [r for r in results if not r.empty]
     return sp.SparseFrame.vstack(results)
 
