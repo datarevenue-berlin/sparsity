@@ -265,7 +265,7 @@ class SparseFrame(dask.base.DaskMethodsMixin):
         """
         from .shuffle import sort_index
         return sort_index(self, npartitions=npartitions,
-                          divisions=None, **kwargs)
+                          divisions=divisions, **kwargs)
 
     @derived_from(sp.SparseFrame)
     def set_index(self, column=None, idx=None, level=None):
