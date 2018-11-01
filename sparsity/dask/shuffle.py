@@ -211,7 +211,7 @@ def rearrange_by_index_tasks(df, max_branch=32, npartitions=None):
 
 def shuffle_index(sf: sp.SparseFrame, stage, k, npartitions):
     ind = sf['_partitions'].todense().astype(np.int)
-    c = ind._values
+    c = ind._values.reshape(-1)
     typ = np.min_scalar_type(npartitions * 2)
     c = c.astype(typ)
 
