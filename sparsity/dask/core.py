@@ -195,8 +195,10 @@ class SparseFrame(dask.base.DaskMethodsMixin):
             meta = sp.SparseFrame.join(self._meta_nonempty,
                                        other,
                                        how=how)
+            # make empty meta
+            meta = meta.loc[[False] * meta.shape[0], :]
             join_func = partial(sp.SparseFrame.join, other=other,
-                                how=how)
+                                how='left')
             return self.map_partitions(join_func, meta=meta, name='simplejoin')
         if not isinstance(other, (SparseFrame)):
             raise ValueError('other must be SparseFrame')
@@ -647,6 +649,7 @@ def apply_and_enforce(func, arg, kwargs, meta):
     columns = meta.columns
     if isinstance(sf, sp.SparseFrame):
         if len(sf.data.data) == 0:
+            assert meta.empty, "Received non empty meta"
             return meta
         if (len(columns) == len(sf.columns) and
                     type(columns) is type(sf.columns) and
