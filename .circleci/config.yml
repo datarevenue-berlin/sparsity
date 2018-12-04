@@ -6,6 +6,6 @@ jobs:
       - image: drtools/dask:latest
     steps:
       - checkout
-      - run: pip install pytest pytest-cov moto dask==0.19.2 .
+      - run: pip install pytest pytest-cov moto dask==1.0.0 .
       - run: py.test --cov sparsity --cov-report xml sparsity
       - run: bash <(curl -s https://codecov.io/bash)
