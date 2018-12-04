@@ -27,7 +27,9 @@ setup(
         'dask>0.20.0'
     ],
     test_requires=[
-        'moto',
+        'boto3==1.7.84',
+        'botocore==1.10.84',
+        'moto==1.3.6'
     ],
     zip_safe=False,
     classifiers=[
