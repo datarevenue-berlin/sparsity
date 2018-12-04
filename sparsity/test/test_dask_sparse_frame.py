@@ -14,7 +14,7 @@ import pandas.util.testing as pdt
 
 from .conftest import tmpdir
 
-dask.config.set(get=dask.local.get_sync)
+dask.config.set(scheduler=dask.local.get_sync)
 
 
 @pytest.fixture

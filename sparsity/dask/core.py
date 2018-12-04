@@ -198,7 +198,7 @@ class SparseFrame(dask.base.DaskMethodsMixin):
             # make empty meta
             meta = meta.loc[[False] * meta.shape[0], :]
             join_func = partial(sp.SparseFrame.join, other=other,
-                                how='left')
+                                how=how)
             return self.map_partitions(join_func, meta=meta, name='simplejoin')
         if not isinstance(other, (SparseFrame)):
             raise ValueError('other must be SparseFrame')
