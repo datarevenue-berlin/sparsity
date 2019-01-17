@@ -6,6 +6,7 @@ from contextlib import contextmanager
 
 import numpy as np
 import pandas as pd
+import pandas.testing as pdt
 import pytest
 from moto import mock_s3
 from scipy import sparse
@@ -587,6 +588,11 @@ def test_getitem():
     assert isinstance(sf.columns, type(sf[[]].columns))
     with pytest.raises(ValueError):
         sf[None]
+
+
+def test_getitem_index(sample_frame_labels):
+    idx = pd.Index(list('ABC'))
+    pdt.assert_index_equal(idx, sample_frame_labels[idx].columns)
 
 
 def test_vstack():

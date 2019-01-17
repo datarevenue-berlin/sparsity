@@ -789,7 +789,7 @@ class SparseFrame(object):
 
         Returns
         -------
-        dropeed: SparseFrame
+        dropped: SparseFrame
         """
         mask = ~self.index.duplicated(**kwargs)
         return SparseFrame(self.data[mask], index=self.index.values[mask],
@@ -798,7 +798,9 @@ class SparseFrame(object):
     def __getitem__(self, item):
         if item is None:
             raise ValueError('Cannot label index with a null key.')
-        if not isinstance(item, (tuple, list)):
+        if not isinstance(item, (pd.Series, np.ndarray, pd.Index, list,
+                                 tuple)):
+            # TODO: tuple probably should be a separate case
             item = [item]
         if len(item) > 0:
             return self.reindex_axis(item, axis=1)
