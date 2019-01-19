@@ -800,7 +800,8 @@ class SparseFrame(object):
             raise ValueError('Cannot label index with a null key.')
         if not isinstance(item, (pd.Series, np.ndarray, pd.Index, list,
                                  tuple)):
-            # TODO: tuple probably should be a separate case
+            # TODO: tuple probably should be a separate case as in Pandas
+            #  where it is used with Multiindex
             item = [item]
         if len(item) > 0:
             return self.reindex_axis(item, axis=1)

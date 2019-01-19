@@ -576,6 +576,7 @@ def test_npz_io_s3(complex_example):
 def test_getitem():
     id_ = np.identity(10)
     sf = SparseFrame(id_, columns=list('abcdefghij'))
+
     assert sf['a'].data.todense()[0] == 1
     assert sf['j'].data.todense()[9] == 1
     assert np.all(sf[['a', 'b']].data.todense() == np.asmatrix(id_[:, [0, 1]]))
@@ -589,10 +590,12 @@ def test_getitem():
     with pytest.raises(ValueError):
         sf[None]
 
-
-def test_getitem_index(sample_frame_labels):
-    idx = pd.Index(list('ABC'))
-    pdt.assert_index_equal(idx, sample_frame_labels[idx].columns)
+    idx = pd.Index(list('abc'))
+    pdt.assert_index_equal(idx, sf[idx].columns)
+    pdt.assert_index_equal(idx, sf[idx.to_series()].columns)
+    pdt.assert_index_equal(idx, sf[idx.tolist()].columns)
+    pdt.assert_index_equal(idx, sf[tuple(idx)].columns)
+    pdt.assert_index_equal(idx, sf[idx.values].columns)
 
 
 def test_vstack():
