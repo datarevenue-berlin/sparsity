@@ -10,7 +10,7 @@ from sparsity.dask import SparseFrame
 
 def one_hot_encode(ddf, column=None, categories=None, index_col=None,
                    order=None, prefixes=False,
-                   ignore_cat_order_mismatch=False):
+                   ignore_cat_order_mismatch=False, sep='_'):
     """
     Sparse one hot encoding of dask.DataFrame.
 
@@ -45,9 +45,12 @@ def one_hot_encode(ddf, column=None, categories=None, index_col=None,
         so that new columns will be named like:
         [cat11, cat12, cat21, cat22, ...].
 
-        If True, original column name followed by an underscore will be added
+        If True, original column name followed by ``sep`` will be added
         in front of each category name, so that new columns will be named like:
-        [col1_cat11, col1_cat12, col2_cat21, col2_cat22, ...].
+        [col1_cat11, col1_cat12, col2_cat21, col2_cat22, ...] (assuming default
+        sep).
+    sep: str
+        Separator of original column name and category name.
     column: DEPRECATED
         Kept only for backward compatibility.
     ignore_cat_order_mismatch: bool
@@ -86,7 +89,8 @@ def one_hot_encode(ddf, column=None, categories=None, index_col=None,
                              categories=categories,
                              index_col=index_col,
                              prefixes=prefixes,
-                             ignore_cat_order_mismatch=ignore_cat_order_mismatch
+                             ignore_cat_order_mismatch=ignore_cat_order_mismatch,
+                             sep=sep,
                              ).columns
     meta = sp.SparseFrame(np.empty(shape=(0, len(columns))), columns=columns,
                           index=idx_meta)
