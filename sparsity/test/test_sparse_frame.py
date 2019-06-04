@@ -11,7 +11,7 @@ import pytest
 from moto import mock_s3
 from scipy import sparse
 from sparsity import SparseFrame, sparse_one_hot
-from sparsity.io import _csr_to_dict
+from sparsity.io_ import _csr_to_dict
 
 from .conftest import tmpdir
 
@@ -57,6 +57,12 @@ def test_empty_init():
 
     sf = SparseFrame(np.array([]), index=['A', 'B'], columns=[])
     assert sf.data.shape == (2, 0)
+
+
+def test_empty_column_access():
+    sf = SparseFrame(np.array([]), index=[], columns=['A', 'B', 'C', 'D'])
+    assert sf['D'].data.shape == (0, 1)
+
 
 def test_groupby(groupby_frame):
     t = groupby_frame

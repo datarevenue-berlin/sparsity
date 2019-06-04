@@ -14,7 +14,7 @@ try:
     from pandas.indexes.base import _ensure_index
 except ImportError:
     from pandas.core.indexes.base import _ensure_index
-from sparsity.io import to_npz, read_npz, _just_read_array
+from sparsity.io_ import to_npz, read_npz, _just_read_array
 from scipy import sparse
 
 from sparsity.indexing import get_indexers_list

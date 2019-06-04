@@ -10,7 +10,7 @@ from dask.dataframe.utils import make_meta
 
 import sparsity as sp
 from sparsity.dask.core import SparseFrame
-from sparsity.io import _write_dict_npz, _open_npz_archive
+from sparsity.io_ import _write_dict_npz, _open_npz_archive
 
 _sorted = sorted
 
