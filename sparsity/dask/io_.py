@@ -130,7 +130,7 @@ def _npz_read_divisions(paths, level=None):
     divisions = []
     assert len(paths) > 1
     for p in paths:
-        archive = np.load(p)
+        archive = np.load(p, allow_pickle=True)
         idx = archive['frame_index']
         if level is not None:
             idx = idx.get_level_values(level)

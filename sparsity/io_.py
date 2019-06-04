@@ -124,7 +124,7 @@ def _open_npz_archive(filename, storage_options=None):
     protocol = urlparse(filename).scheme or 'file'
     open_f = _filesystems[protocol](**storage_options).open
     fp = open_f(filename, 'rb')
-    loader = np.load(fp)
+    loader = np.load(fp, allow_pickle=True)
     return loader
 
 
