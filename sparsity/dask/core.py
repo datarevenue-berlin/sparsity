@@ -8,17 +8,18 @@ import pandas as pd
 from dask import threaded
 from dask.base import normalize_token, tokenize
 from dask.dataframe import methods
-from dask.dataframe.core import (Scalar, Series, _emulate, _extract_meta,
-                                 _Frame, _maybe_from_pandas, apply, funcname,
-                                 no_default, partial, partial_by_order,
-                                 split_evenly, check_divisions, hash_shard,
-                                 split_out_on_index, Index, get_parallel_type)
+from dask.dataframe.core import (Index, Scalar, Series, _Frame, _emulate,
+                                 _extract_meta, _maybe_from_pandas, apply,
+                                 check_divisions, funcname, get_parallel_type,
+                                 hash_shard, no_default, partial,
+                                 partial_by_order, split_evenly,
+                                 split_out_on_index)
 from dask.dataframe.utils import _nonempty_index, make_meta, meta_nonempty
 from dask.delayed import Delayed
 from dask.optimization import cull
 from dask.utils import derived_from
 from scipy import sparse
-from toolz import merge, remove, partition_all
+from toolz import merge, partition_all, remove
 
 import sparsity as sp
 from sparsity.dask.indexing import _LocIndexer
@@ -657,7 +658,11 @@ def apply_and_enforce(func, arg, kwargs, meta):
     columns = meta.columns
     if isinstance(sf, sp.SparseFrame):
         if len(sf.data.data) == 0:
-            assert meta.empty, "Received non empty meta"
+            assert meta.empty, \
+                "Computed empty result but received non-empty meta"
+            assert isinstance(meta, sp.SparseFrame), \
+                "Computed a SparseFrame but meta is of type {}"\
+                .format(type(meta))
             return meta
         if (len(columns) == len(sf.columns) and
                     type(columns) is type(sf.columns) and
