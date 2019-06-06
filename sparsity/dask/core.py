@@ -1,4 +1,4 @@
-from operator import getitem
+from operator import getitem, itemgetter
 from pprint import pformat
 
 import dask
@@ -76,6 +76,10 @@ class SparseFrame(dask.base.DaskMethodsMixin):
         self.ndim = 2
 
         self.loc = _LocIndexer(self)
+
+    def __getitem__(self, item):
+        return self.map_partitions(itemgetter(item), self._meta[item],
+                                   name='__getitem__')
 
     def __dask_graph__(self):
         return self.dask

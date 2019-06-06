@@ -1,18 +1,18 @@
 import datetime as dt
 import os
-from distributed import Client
 from uuid import uuid4
 
 import dask
 import dask.dataframe as dd
 import numpy as np
 import pandas as pd
+import pandas.util.testing as pdt
 import pytest
+from distributed import Client
+
 import sparsity as sp
 import sparsity.dask as dsp
 from sparsity.dask.reshape import one_hot_encode
-import pandas.util.testing as pdt
-
 from .conftest import tmpdir
 
 dask.config.set(scheduler=dask.local.get_sync)
@@ -44,6 +44,26 @@ def test_map_partitions():
     assert isinstance(res, sp.SparseFrame)
     assert res.shape == (10, 2)
 
+
+@pytest.mark.parametrize('item', [
+    'X',
+    ['X', 'Y'],
+])
+def test_getitem(item):
+    df = pd.DataFrame(np.random.rand(10, 3), columns=list('XYZ'),
+                      index=list('ABCDEFGHIJ'))
+    dsf = dsp.from_pandas(df, npartitions=2)
+    
+    correct_cols = item if isinstance(item, list) else [item]
+    res = dsf[item]
+    assert res.columns.tolist() == correct_cols
+    res_computed = res.compute()
+    assert res_computed.columns.tolist() == correct_cols
+    if not isinstance(item, list):
+        pdt.assert_series_equal(df[item], res_computed.todense())
+    else:
+        pdt.assert_frame_equal(df[item], res_computed.todense())
+    
 
 @pytest.mark.parametrize('iindexer, correct_shape', [
     (slice('A', 'B'), (2, 2)),
