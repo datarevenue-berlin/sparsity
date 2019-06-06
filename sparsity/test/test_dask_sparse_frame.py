@@ -63,6 +63,25 @@ def test_getitem(item):
         pdt.assert_series_equal(df[item], res_computed.todense())
     else:
         pdt.assert_frame_equal(df[item], res_computed.todense())
+
+
+@pytest.mark.parametrize('item', [
+    'X',
+    ['X', 'Y'],
+])
+def test_getitem_empty(item):
+    df = pd.DataFrame([], columns=list('XYZ'), dtype=int)
+    dsf = dsp.from_ddf(dd.from_pandas(df, npartitions=1))
+    
+    correct_cols = item if isinstance(item, list) else [item]
+    res = dsf[item]
+    assert res.columns.tolist() == correct_cols
+    res_computed = res.compute()
+    assert res_computed.columns.tolist() == correct_cols
+    if not isinstance(item, list):
+        pdt.assert_series_equal(df[item], res_computed.todense())
+    else:
+        pdt.assert_frame_equal(df[item], res_computed.todense())
     
 
 @pytest.mark.parametrize('iindexer, correct_shape', [
@@ -84,6 +103,7 @@ def test_loc(iindexer, correct_shape):
     assert isinstance(res, sp.SparseFrame)
     assert res.shape == correct_shape
 
+
 def test_dask_loc(clickstream):
     sf = one_hot_encode(dd.from_pandas(clickstream, npartitions=10),
                         categories={'page_id': list('ABCDE'),
@@ -104,6 +124,7 @@ def test_dask_multi_index_loc(clickstream):
     res = res.compute()
     assert res.index.get_level_values(0).date.min() == dt.date(2016, 1, 15)
     assert res.index.get_level_values(0).date.max() == dt.date(2016, 2, 15)
+
 
 def test_repr():
     dsf = dsp.from_pandas(pd.DataFrame(np.random.rand(10, 2)),
