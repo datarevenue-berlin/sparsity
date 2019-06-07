@@ -135,6 +135,22 @@ class SparseFrame(dask.base.DaskMethodsMixin):
     def map_partitions(self, func, meta, *args, **kwargs):
         return map_partitions(func, self, meta, *args, **kwargs)
 
+    # noinspection PyTypeChecker
+    def todense(self):
+        """Convert into Dask DataFrame or Series
+        
+        Returns
+        -------
+        res: dd.DataFrame | dd.Series
+        """
+        meta = dd.from_pandas(self._meta.todense(), npartitions=1)
+        res = self.map_partitions(
+            sp.SparseFrame.todense,
+            meta,
+            cls=dd.DataFrame if len(self.columns) > 1 else dd.Series,
+        )
+        return res
+
     def to_delayed(self):
         return [Delayed(k, self.dask) for k in self.__dask_keys__()]
 
@@ -644,7 +660,7 @@ def elemwise(op, *args, **kwargs):
     return SparseFrame(dsk, _name, meta, divisions)
 
 
-def map_partitions(func, ddf, meta, name=None, **kwargs):
+def map_partitions(func, ddf, meta, name=None, cls=SparseFrame, **kwargs):
     dsk = {}
     name = name or func.__name__
     token = tokenize(func, meta, **kwargs)
@@ -654,12 +670,11 @@ def map_partitions(func, ddf, meta, name=None, **kwargs):
         value = (ddf._name, i)
         dsk[(name, i)] = (apply_and_enforce, func, value, kwargs, meta)
 
-    return SparseFrame(merge(dsk, ddf.dask), name, meta, ddf.divisions)
+    return cls(merge(dsk, ddf.dask), name, meta, ddf.divisions)
 
 
 def apply_and_enforce(func, arg, kwargs, meta):
     sf = func(arg, **kwargs)
-    columns = meta.columns
     if isinstance(sf, sp.SparseFrame):
         if len(sf.data.data) == 0:
             assert meta.empty, \
@@ -668,6 +683,7 @@ def apply_and_enforce(func, arg, kwargs, meta):
                 "Computed a SparseFrame but meta is of type {}"\
                 .format(type(meta))
             return meta
+        columns = meta.columns
         if (len(columns) == len(sf.columns) and
                     type(columns) is type(sf.columns) and
                 columns.equals(sf.columns)):

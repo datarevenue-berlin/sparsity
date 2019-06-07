@@ -1,14 +1,14 @@
-import datetime as dt
 import os
-from uuid import uuid4
 
 import dask
 import dask.dataframe as dd
+import datetime as dt
 import numpy as np
 import pandas as pd
 import pandas.util.testing as pdt
 import pytest
 from distributed import Client
+from uuid import uuid4
 
 import sparsity as sp
 import sparsity.dask as dsp
@@ -43,6 +43,24 @@ def test_map_partitions():
 
     assert isinstance(res, sp.SparseFrame)
     assert res.shape == (10, 2)
+
+
+def test_todense():
+    data = pd.DataFrame(np.random.rand(10, 2))
+    dsf = dsp.from_pandas(data, npartitions=3)
+    res = dsf.todense()
+    assert isinstance(res, dd.DataFrame)
+    computed = res.compute()
+    pdt.assert_frame_equal(computed, data, check_dtype=False)
+
+
+def test_todense_series():
+    data = pd.DataFrame(np.random.rand(10, 2))
+    dsf = dsp.from_pandas(data, npartitions=3)[0]
+    res = dsf.todense()
+    assert isinstance(res, dd.Series)
+    computed = res.compute()
+    pdt.assert_series_equal(computed, data[0], check_dtype=False)
 
 
 @pytest.mark.parametrize('item', [
