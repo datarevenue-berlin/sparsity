@@ -1,12 +1,12 @@
 # coding=utf-8
-import functools
 import traceback
 import warnings
 from collections import OrderedDict
-from functools import partial, reduce
 
+import functools
 import numpy as np
 import pandas as pd
+from functools import partial, reduce
 from pandas.api import types
 from pandas.core.common import _default_index
 
@@ -179,15 +179,17 @@ class SparseFrame(object):
                 dense = pd.DataFrame(np.empty(shape=self.shape),
                                      columns=self.columns,
                                      index=self._index[:0])
+                if self.data.shape[1] == 1:  # 1 empty column => empty Series
+                    dense = dense.iloc[:, 0]
             elif len(dense.shape) == 1 and \
-                    self.data.shape[1] == 1:
+                    self.data.shape[1] == 1:  # 1 column => Series
                 dense = pd.Series(dense, index=self.index,
                                   name=self.columns[0])
             elif len(dense.shape) == 1 and \
-                            self.data.shape[1] > 1:
+                            self.data.shape[1] > 1:  # 1 row => DataFrame
                 dense = pd.DataFrame(dense.reshape(1, -1), index=self.index,
                                      columns=self.columns)
-            else:
+            else:  # 2+ cols and 2+ rows
                 # need to copy, as broadcast_to returns read_only array
                 idx = np.broadcast_to(self.index, dense.shape[0])\
                      .copy()
