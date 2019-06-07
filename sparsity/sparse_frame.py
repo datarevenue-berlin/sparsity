@@ -1012,8 +1012,10 @@ class SparseFrame(object):
             new_index, idx = self.columns.reindex(labels)
             if idx is None:
                 return self.copy()
-            # we have a hidden zero column to replace missing indices (-1)
-            new_data = self._data.T[idx].T[:-1]
+            new_data = self._data.T[idx].T
+            if not self.empty:
+                # we have a hidden zero column to replace missing indices (-1)
+                new_data = new_data[:-1]
         else:
             raise ValueError("Only two dimensional data supported.")
 
