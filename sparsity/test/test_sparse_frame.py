@@ -579,6 +579,7 @@ def test_npz_io_s3(complex_example):
         assert np.all(loaded.columns == sf.columns)
 
 
+# noinspection PyStatementEffect
 def test_getitem():
     id_ = np.identity(10)
     sf = SparseFrame(id_, columns=list('abcdefghij'))
@@ -602,6 +603,35 @@ def test_getitem():
     pdt.assert_index_equal(idx, sf[idx.tolist()].columns)
     pdt.assert_index_equal(idx, sf[tuple(idx)].columns)
     pdt.assert_index_equal(idx, sf[idx.values].columns)
+
+
+# noinspection PyStatementEffect
+def test_getitem_missing_col():
+    id_ = np.identity(10)
+    sf = SparseFrame(id_, columns=list('abcdefghij'))
+
+    with pytest.raises(ValueError):
+        sf[None]
+    with pytest.raises(KeyError):
+        sf['x']
+    with pytest.raises(KeyError):
+        sf[['x']]
+    with pytest.raises(KeyError):
+        sf[['a', 'x']]
+    with pytest.raises(KeyError):
+        sf[['y', 'x']]
+
+    idx = pd.Index(list('abx'))
+    with pytest.raises(KeyError):
+        sf[idx]
+    with pytest.raises(KeyError):
+        sf[idx.to_series()]
+    with pytest.raises(KeyError):
+        sf[idx.tolist()]
+    with pytest.raises(KeyError):
+        sf[tuple(idx)]
+    with pytest.raises(KeyError):
+        sf[idx.values]
 
 
 def test_vstack():

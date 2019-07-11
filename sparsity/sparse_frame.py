@@ -806,7 +806,8 @@ class SparseFrame(object):
             #  where it is used with Multiindex
             item = [item]
         if len(item) > 0:
-            return self.reindex_axis(item, axis=1)
+            indexer = self.loc._convert_to_indexer(item, axis=1)
+            return self._take(indexer, axis=1)
         else:
             data = np.empty(shape=(self.shape[0], 0))
             return SparseFrame(data, index=self.index,
