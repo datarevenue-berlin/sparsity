@@ -63,16 +63,27 @@ def test_todense_series():
     pdt.assert_series_equal(computed, data[0], check_dtype=False)
 
 
-@pytest.mark.parametrize('item', [
-    'X',
-    ['X', 'Y'],
+# noinspection PyStatementEffect
+@pytest.mark.parametrize('item, raises', [
+    ('X', False),
+    (['X', 'Y'], False),
+    ('A', True),
+    (['A'], True),
+    (['X', 'A'], True),
+    (['A', 'B'], True),
 ])
-def test_getitem(item):
+def test_getitem(item, raises):
     df = pd.DataFrame(np.random.rand(10, 3), columns=list('XYZ'),
                       index=list('ABCDEFGHIJ'))
     dsf = dsp.from_pandas(df, npartitions=2)
     
     correct_cols = item if isinstance(item, list) else [item]
+    
+    if raises:
+        with pytest.raises(KeyError):
+            dsf[item]
+        return
+    
     res = dsf[item]
     assert res.columns.tolist() == correct_cols
     res_computed = res.compute()
