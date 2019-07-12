@@ -605,6 +605,16 @@ def test_getitem():
     pdt.assert_index_equal(idx, sf[idx.values].columns)
 
 
+def test_getitem_empty():
+    df = pd.DataFrame([], columns=list('abcdefghij'), dtype=float)
+    sf = SparseFrame(df)
+    
+    assert sf['a'].empty
+    assert sf['a'].columns.tolist() == ['a']
+    assert sf[['a', 'b']].empty
+    assert sf[['a', 'b']].columns.tolist() == ['a', 'b']
+    
+
 # noinspection PyStatementEffect
 def test_getitem_missing_col():
     id_ = np.identity(10)
