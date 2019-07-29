@@ -221,6 +221,18 @@ def test_one_hot_prefixes(clickstream):
     assert sorted(sf.columns) == sorted(correct_columns)
 
 
+def test_one_hot_prefixes_sep(clickstream):
+    ddf = dd.from_pandas(clickstream, npartitions=10)
+    dsf = one_hot_encode(ddf,
+                         categories={'page_id': list('ABCDE'),
+                                     'other_categorical': list('FGHIJ')},
+                         index_col=['index', 'id'],
+                         prefixes=True, sep='=')
+    correct_columns = list(map(lambda x: 'page_id=' + x, list('ABCDE'))) \
+        + list(map(lambda x: 'other_categorical=' + x, list('FGHIJ')))
+    assert sorted(dsf.columns) == sorted(correct_columns)
+
+
 def test_one_hot_order1(clickstream):
     ddf = dd.from_pandas(clickstream, npartitions=10)
     dsf = one_hot_encode(ddf,

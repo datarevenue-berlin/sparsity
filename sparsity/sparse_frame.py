@@ -1103,7 +1103,7 @@ def _create_group_matrix(group_idx, dtype='f8'):
 
 
 def sparse_one_hot(df, column=None, categories=None, dtype='f8',
-                   index_col=None, order=None, prefixes=False,
+                   index_col=None, order=None, prefixes=False, sep='_',
                    ignore_cat_order_mismatch=False):
     """
     One-hot encode specified columns of a pandas.DataFrame.
@@ -1152,7 +1152,8 @@ def sparse_one_hot(df, column=None, categories=None, dtype='f8',
                 ignore_cat_order_mismatch=ignore_cat_order_mismatch
             )
             if prefixes:
-                cols = list(map(lambda x: '{}_{}'.format(column, x), cols))
+                column_tmpl = ''.join((column, sep, '{}'))
+                cols = list(map(column_tmpl.format, map(str, cols)))
         new_cols.extend(cols)
         csrs.append(csr)
     if len(set(new_cols)) < len(new_cols):

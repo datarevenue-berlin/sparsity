@@ -537,6 +537,19 @@ def test_csr_one_hot_series_prefixes(sampledata, weekdays, weekdays_abbr):
     assert all(sparse_frame.columns == correct_columns)
 
 
+def test_csr_one_hot_series_prefixes_sep(sampledata, weekdays, weekdays_abbr):
+    categories = {'weekday': weekdays,
+                  'weekday_abbr': weekdays_abbr}
+
+    sparse_frame = sparse_one_hot(sampledata(49), categories=categories,
+                                  order=['weekday', 'weekday_abbr'],
+                                  prefixes=True, sep='=')
+
+    correct_columns = list(map(lambda x: 'weekday=' + x, weekdays)) \
+        + list(map(lambda x: 'weekday_abbr=' + x, weekdays_abbr))
+    assert all(sparse_frame.columns == correct_columns)
+
+
 def test_csr_one_hot_series_same_categories(weekdays):
     sample_data = pd.DataFrame(
         dict(date=pd.date_range("2017-01-01", periods=7)))
