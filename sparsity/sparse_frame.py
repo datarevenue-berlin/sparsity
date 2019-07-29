@@ -1114,28 +1114,45 @@ def sparse_one_hot(df, column=None, categories=None, dtype='f8',
     if column is not None:
         warnings.warn(
             '`column` argument of sparsity.sparse_frame.sparse_one_hot '
-            'function is deprecated.'
+            'and sparsity.dask.reshape.one_hot_encode functions is deprecated.'
         )
         if order is not None:
             raise ValueError('`order` and `column` arguments cannot be used '
                              'together.')
         categories = {column: categories}
 
+    if categories is None:
+        categories = df.dtypes\
+            .map(str)\
+            .map(lambda x: None if x == 'category' else False)\
+            .to_dict()
+
     if order is not None:
+        assert set(order) == set(categories.keys()), \
+            "`order` argument specifies different set of columns then " \
+            "`categories` argument. \n" \
+            "In `order`: {} \nIn categories: {}"\
+            .format(sorted(order), sorted(categories.keys()))
         categories = OrderedDict([(column, categories[column])
                                   for column in order])
 
     new_cols = []
     csrs = []
     for column, column_cat in categories.items():
-        if isinstance(column_cat, str):
-            column_cat = _just_read_array(column_cat)
-        cols, csr = _one_hot_series_csr(
-            column_cat, dtype, df[column],
-            ignore_cat_order_mismatch=ignore_cat_order_mismatch
-        )
-        if prefixes:
-            cols = list(map(lambda x: '{}_{}'.format(column, x), cols))
+        if column_cat is False:
+            # this column is skipped - we don't ohe it
+            cols = [column]
+            csr = sparse.csr_matrix(df[[column]].values)
+        else:
+            # we normally ohe this column
+            if isinstance(column_cat, str):
+                column_cat = _just_read_array(column_cat)
+            cols, csr = _one_hot_series_csr(
+                column_cat, dtype, df[column],
+                ignore_cat_order_mismatch=ignore_cat_order_mismatch
+            )
+            if prefixes:
+                cols = list(map(lambda x: '{}_{}'.format(column, x), cols))
         new_cols.extend(cols)
         csrs.append(csr)
     if len(set(new_cols)) < len(new_cols):

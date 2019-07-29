@@ -251,6 +251,20 @@ def test_one_hot_order2(clickstream):
     assert all(sf.columns == list('FGHIJABCDE'))
 
 
+def test_one_hot_dense_column(clickstream):
+    ddf = dd.from_pandas(clickstream, npartitions=10)
+    dsf = one_hot_encode(ddf,
+                         categories={'page_id': list('ABCDE'),
+                                     'other_categorical': list('FGHIJ'),
+                                     'id': False},
+                         )
+    assert dsf._meta.empty
+    assert set(dsf.columns) == set('ABCDEFGHIJ') | {'id'}
+    sf = dsf.compute()
+    assert sf.shape == (100, 11)
+    assert set(sf.columns) == set('ABCDEFGHIJ') | {'id'}
+
+
 def test_one_hot_disk_categories(clickstream):
     with tmpdir() as tmp:
         cat_path = os.path.join(tmp, 'cat.pickle')
