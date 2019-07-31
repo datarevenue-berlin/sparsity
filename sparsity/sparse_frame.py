@@ -1178,15 +1178,14 @@ def _one_hot_series_csr(categories, dtype, oh_col,
                                 ignore_cat_order_mismatch)
 
     else:
-        s = oh_col
-        cat = pd.Categorical(s, np.asarray(categories))
+        cat = pd.Categorical(oh_col, np.asarray(categories))
     codes = cat.codes
     n_features = len(cat.categories)
     n_samples = codes.size
     mask = codes != -1
     if np.any(~mask):
         raise ValueError("Unknown categorical features present "
-                         "during transform: %s." % np.unique(s[~mask]))
+                         "during transform: %s." % np.unique(oh_col[~mask]))
     row_indices = np.arange(n_samples, dtype=np.int32)
     col_indices = codes
     data = np.ones(row_indices.size)
