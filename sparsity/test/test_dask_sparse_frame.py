@@ -45,6 +45,22 @@ def test_map_partitions():
     assert res.shape == (10, 2)
 
 
+def test_map_partitions_mappable():
+    data = pd.DataFrame(np.ones((10, 2)))
+    dsf = dsp.from_pandas(data, chunksize=5)
+    
+    def foo(sf, x, y):
+        return sp.SparseFrame(sf.data * x * y,
+                              index=sf.index, columns=sf.columns)
+    
+    dsf = dsf.map_partitions(foo, dsf._meta, x=(i for i in range(2, 4)), y=2)
+    res = dsf.compute().todense()
+
+    assert res.shape == (10, 2)
+    assert (res.iloc[:5, :] == 4).all().all()
+    assert (res.iloc[5:, :] == 6).all().all()
+
+
 def test_todense():
     data = pd.DataFrame(np.random.rand(10, 2))
     dsf = dsp.from_pandas(data, npartitions=3)

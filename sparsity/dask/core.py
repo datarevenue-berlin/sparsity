@@ -17,9 +17,11 @@ from dask.dataframe.core import (Index, Scalar, Series, _Frame, _emulate,
 from dask.dataframe.utils import _nonempty_index, make_meta, meta_nonempty
 from dask.delayed import Delayed
 from dask.optimization import cull
-from dask.utils import derived_from
+from dask.utils import derived_from, random_state_data
+from itertools import repeat
 from scipy import sparse
 from toolz import merge, partition_all, remove
+from types import GeneratorType
 
 import sparsity as sp
 from sparsity.dask.indexing import _LocIndexer
@@ -684,15 +686,40 @@ def elemwise(op, *args, **kwargs):
     return SparseFrame(dsk, _name, meta, divisions)
 
 
+def _maybe_repeat(x):
+    if isinstance(x, GeneratorType):
+        return x
+    return repeat(x)
+
+
+def _make_mappable(d):
+    """Convert each value to a generator, unless it already is one."""
+    res = dict(zip(
+        d.keys(),
+        map(_maybe_repeat, d.values())
+    ))
+    return res
+
+
 def map_partitions(func, ddf, meta, name=None, **kwargs):
+    """Map a function onto partitions.
+    
+    If you want to pass different values to different partitions,
+    pass a generator in kwargs. Subsequent values will be passed to
+    the function while mapping onto subsequent partitions.
+    """
+    kwargs = _make_mappable(kwargs)
+    
     dsk = {}
     name = name or func.__name__
     token = tokenize(func, meta, **kwargs)
     name = '{0}-{1}'.format(name, token)
 
     for i in range(ddf.npartitions):
+        # for each partition take next value
+        kw = {k: next(v) for k, v in kwargs.items()}
         value = (ddf._name, i)
-        dsk[(name, i)] = (apply_and_enforce, func, value, kwargs, meta)
+        dsk[(name, i)] = (apply_and_enforce, func, value, kw, meta)
 
     return SparseFrame(merge(dsk, ddf.dask), name, meta, ddf.divisions)
 
