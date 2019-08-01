@@ -606,3 +606,11 @@ def test_sample_replace(dsf_arange):
     cmp = res.compute()
     assert cmp.shape == (12, 3)
     assert cmp.todense().duplicated().any()
+
+
+def test_sample_compute_twice(dsf_arange):
+    for _ in range(5):  # increase chance of failing
+        res = dsf_arange.sample(frac=0.2, replace=False)
+        cmp1 = res.compute().todense()
+        cmp2 = res.compute().todense()
+        pdt.assert_frame_equal(cmp1, cmp2)
