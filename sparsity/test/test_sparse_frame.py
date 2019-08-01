@@ -1068,3 +1068,44 @@ def test_error_unaligned_indices():
     with pytest.raises(ValueError) as e:
         SparseFrame(data, columns=np.arange(6), index=np.arange(6))
         assert '(5, 5)' in str(e) and '(6, 6)' in str(e)
+
+
+@pytest.fixture(scope='session')
+def sf_arange():
+    return SparseFrame(np.tile(np.arange(10)[:, np.newaxis], (1, 3)),
+                       columns=list('ABC'))
+
+
+def test_sample_n(sf_arange):
+    res = sf_arange.sample(n=5)
+    assert res.shape == (5, 3)
+    assert not res.todense().duplicated().any()
+
+
+def test_sample_frac(sf_arange):
+    res = sf_arange.sample(frac=0.5)
+    assert res.shape == (5, 3)
+    assert not res.todense().duplicated().any()
+
+
+def test_sample_axis(sf_arange):
+    res = sf_arange.sample(n=2, axis=1)
+    assert res.shape == (10, 2)
+    assert not res.todense().duplicated().any()
+
+
+def test_sample_errors(sf_arange):
+    with pytest.raises(ValueError):
+        sf_arange.sample(n=5, frac=0.5)
+    with pytest.raises(ValueError):
+        sf_arange.sample()
+    with pytest.raises(NotImplementedError):
+        sf_arange.sample(n=5, random_state=123)
+    with pytest.raises(NotImplementedError):
+        sf_arange.sample(n=5, weights='asd')
+
+
+def test_sample_replace(sf_arange):
+    res = sf_arange.sample(n=11, replace=True)
+    assert res.shape == (11, 3)
+    assert res.todense().duplicated().any()
