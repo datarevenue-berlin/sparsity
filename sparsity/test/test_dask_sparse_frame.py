@@ -567,3 +567,42 @@ def test_persist(dsf):
     res = persisted.compute().todense()
 
     pdt.assert_frame_equal(res, correct)
+
+
+@pytest.fixture(scope='session')
+def dsf_arange(sf_arange):
+    return dsp.from_pandas(sf_arange.todense(), chunksize=5)
+
+
+def test_sample(dsf_arange):
+    res = dsf_arange.sample(frac=0.2)
+    assert res.todense().map_partitions(len).compute().tolist() == [1, 1]
+    cmp = res.compute()
+    assert cmp.shape == (2, 3)
+    assert not cmp.todense().duplicated().any()
+
+
+def test_sample_axis(dsf_arange):
+    res = dsf_arange.sample(n=2, axis=1)
+    cmp = res.compute()
+    assert cmp.shape == (10, 2)
+
+
+def test_sample_errors(dsf_arange):
+    with pytest.raises(NotImplementedError):
+        dsf_arange.sample(n=5)
+    with pytest.raises(ValueError):
+        dsf_arange.sample(n=5, frac=0.5, axis=1)
+    with pytest.raises(ValueError):
+        dsf_arange.sample()
+    with pytest.raises(NotImplementedError):
+        dsf_arange.sample(n=5, random_state=123)
+    with pytest.raises(NotImplementedError):
+        dsf_arange.sample(n=5, weights='asd')
+
+
+def test_sample_replace(dsf_arange):
+    res = dsf_arange.sample(frac=1.2, replace=True)
+    cmp = res.compute()
+    assert cmp.shape == (12, 3)
+    assert cmp.todense().duplicated().any()

@@ -1070,12 +1070,6 @@ def test_error_unaligned_indices():
         assert '(5, 5)' in str(e) and '(6, 6)' in str(e)
 
 
-@pytest.fixture(scope='session')
-def sf_arange():
-    return SparseFrame(np.tile(np.arange(10)[:, np.newaxis], (1, 3)),
-                       columns=list('ABC'))
-
-
 def test_sample_n(sf_arange):
     res = sf_arange.sample(n=5)
     assert res.shape == (5, 3)

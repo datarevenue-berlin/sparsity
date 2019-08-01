@@ -203,6 +203,29 @@ class SparseFrame(dask.base.DaskMethodsMixin):
         elif npartitions is not None:
             return repartition_npartitions(self, npartitions)
         raise ValueError('Either divisions or npartitions must be supplied')
+    
+    def sample(self, n=None, frac=None, replace=False, weights=None,
+               random_state=None, axis=None):
+        axis = axis or 0
+        if axis not in [0, 1]:
+            raise ValueError("Axis must be either 0 or 1.")
+        if axis == 0 and n is not None:
+            raise NotImplementedError("Only `frac` can be used to sample rows"
+                                      " from Dask SparseFrame, not `n`.")
+        if (n is None) == (frac is None):
+            raise ValueError("Please specify either `n` or `frac`.")
+        if weights is not None or random_state is not None:
+            raise NotImplementedError("`weights` and `random_state` arguments "
+                                      "are not supported.")
+        
+        if axis == 0:
+            return self.map_partitions(sp.SparseFrame.sample, self._meta,
+                                       frac=frac, replace=replace, axis=0)
+        if axis == 1:
+            cols = self._meta\
+                .sample(n=n, frac=frac, replace=replace, axis=1)\
+                .columns.tolist()
+            return self[cols]
 
     def get_partition(self, n):
         """Get a sparse dask DataFrame/Series representing
