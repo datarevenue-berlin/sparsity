@@ -216,13 +216,18 @@ class SparseFrame(dask.base.DaskMethodsMixin):
                                       " from Dask SparseFrame, not `n`.")
         if (n is None) == (frac is None):
             raise ValueError("Please specify either `n` or `frac`.")
-        if weights is not None or random_state is not None:
-            raise NotImplementedError("`weights` and `random_state` arguments "
-                                      "are not supported.")
+        if weights is not None:
+            raise NotImplementedError("`weights` argument is not supported.")
+
+        if random_state is None:
+            random_state = np.random.RandomState()
+        state_data = random_state_data(self.npartitions, random_state)
+        state_data = (x for x in state_data)
         
         if axis == 0:
             return self.map_partitions(sp.SparseFrame.sample, self._meta,
-                                       frac=frac, replace=replace, axis=0)
+                                       frac=frac, replace=replace, axis=0,
+                                       random_state=state_data)
         if axis == 1:
             cols = self._meta\
                 .sample(n=n, frac=frac, replace=replace, axis=1)\
