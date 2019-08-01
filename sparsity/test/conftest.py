@@ -133,3 +133,9 @@ def tmpdir(dir=None):
     finally:
         if os.path.exists(dirname):
             shutil.rmtree(dirname, ignore_errors=True)
+
+
+@pytest.fixture(scope='session')
+def sf_arange():
+    return SparseFrame(np.tile(np.arange(1, 11)[:, np.newaxis], (1, 3)),
+                       columns=list('ABC'))
