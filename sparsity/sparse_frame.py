@@ -294,14 +294,14 @@ class SparseFrame(object):
         """
         if (n is None) == (frac is None):
             raise ValueError("Please specify either `n` or `frac`.")
-        if weights is not None or random_state is not None:
-            raise NotImplementedError("`weights` and `random_state` arguments "
-                                      "are not supported.")
+        if weights is not None:
+            raise NotImplementedError("`weights` argument is not supported.")
         axis = axis or 0
         length = self.shape[axis]
         n = n or int(length * frac)
         
-        idx = np.random.choice(np.arange(length), n, replace=replace)
+        rs = np.random.RandomState(random_state)
+        idx = rs.choice(np.arange(length), n, replace=replace)
         return self.take(idx, axis=axis)
 
     def take(self, idx, axis=0, **kwargs):
