@@ -286,6 +286,24 @@ class SparseFrame(object):
         """Get the count of explicitly stored values (nonzeros)."""
         return self.data.nnz
 
+    def sample(self, n=None, frac=None, replace=False, weights=None,
+               random_state=None, axis=None):
+        """Return a random sample of items from an axis of object.
+        
+        This function mimics pandas' API, but doesn't use all the arguments.
+        """
+        if (n is None) == (frac is None):
+            raise ValueError("Please specify either `n` or `frac`.")
+        if weights is not None or random_state is not None:
+            raise NotImplementedError("`weights` and `random_state` arguments "
+                                      "are not supported.")
+        axis = axis or 0
+        length = self.shape[axis]
+        n = n or int(length * frac)
+        
+        idx = np.random.choice(np.arange(length), n, replace=replace)
+        return self.take(idx, axis=axis)
+
     def take(self, idx, axis=0, **kwargs):
         """Return data at integer locations.
 
