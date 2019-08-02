@@ -1,8 +1,8 @@
 # coding=utf-8
-import datetime as dt
 import os
 from contextlib import contextmanager
 
+import datetime as dt
 import numpy as np
 import pandas as pd
 import pandas.testing as pdt
@@ -1101,3 +1101,11 @@ def test_sample_replace(sf_arange):
     res = sf_arange.sample(n=11, replace=True)
     assert res.shape == (11, 3)
     assert res.todense().duplicated().any()
+
+
+def test_reset_index(sample_frame_labels):
+    res = sample_frame_labels.reset_index(drop=True)
+    correct = pd.RangeIndex(0, len(sample_frame_labels))
+    pdt.assert_index_equal(res.index, correct)
+    pdt.assert_index_equal(res.columns, sample_frame_labels.columns)
+    assert np.all(sample_frame_labels.data.todense() == res.data.todense())
