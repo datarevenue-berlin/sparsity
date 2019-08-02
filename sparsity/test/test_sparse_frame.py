@@ -1038,8 +1038,6 @@ def test_sample_errors(sf_arange):
     with pytest.raises(ValueError):
         sf_arange.sample()
     with pytest.raises(NotImplementedError):
-        sf_arange.sample(n=5, random_state=123)
-    with pytest.raises(NotImplementedError):
         sf_arange.sample(n=5, weights='asd')
 
 
