@@ -1,5 +1,7 @@
+from itertools import repeat
 from operator import getitem, itemgetter
 from pprint import pformat
+from types import GeneratorType
 
 import dask
 import dask.dataframe as dd
@@ -18,10 +20,8 @@ from dask.dataframe.utils import _nonempty_index, make_meta, meta_nonempty
 from dask.delayed import Delayed
 from dask.optimization import cull
 from dask.utils import derived_from, random_state_data
-from itertools import repeat
 from scipy import sparse
 from toolz import merge, partition_all, remove
-from types import GeneratorType
 
 import sparsity as sp
 from sparsity.dask.indexing import _LocIndexer
@@ -732,7 +732,7 @@ def map_partitions(func, ddf, meta, name=None, **kwargs):
 def apply_and_enforce(func, arg, kwargs, meta):
     sf = func(arg, **kwargs)
     if isinstance(sf, sp.SparseFrame):
-        if len(sf.data.data) == 0:
+        if sf.empty:
             assert meta.empty, \
                 "Computed empty result but received non-empty meta"
             assert isinstance(meta, sp.SparseFrame), \
