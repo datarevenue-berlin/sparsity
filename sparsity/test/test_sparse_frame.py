@@ -1,8 +1,8 @@
 # coding=utf-8
+import datetime as dt
 import os
 from contextlib import contextmanager
 
-import datetime as dt
 import numpy as np
 import pandas as pd
 import pandas.testing as pdt
@@ -1093,8 +1093,6 @@ def test_sample_errors(sf_arange):
         sf_arange.sample(n=5, frac=0.5)
     with pytest.raises(ValueError):
         sf_arange.sample()
-    with pytest.raises(NotImplementedError):
-        sf_arange.sample(n=5, random_state=123)
     with pytest.raises(NotImplementedError):
         sf_arange.sample(n=5, weights='asd')
 
