@@ -1,3 +1,3 @@
-from .core import SparseFrame
-from .io_ import from_pandas, read_npz, from_ddf
+from .core import SparseFrame, from_delayed
+from .io_ import from_ddf, from_pandas, read_npz
 from .reshape import one_hot_encode

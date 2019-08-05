@@ -1,14 +1,15 @@
+import datetime as dt
 import os
+from uuid import uuid4
 
 import dask
 import dask.dataframe as dd
-import datetime as dt
 import numpy as np
 import pandas as pd
 import pandas.util.testing as pdt
 import pytest
+from dask import delayed
 from distributed import Client
-from uuid import uuid4
 
 import sparsity as sp
 import sparsity.dask as dsp
@@ -49,11 +50,11 @@ def test_map_partitions():
 def test_map_partitions_mappable():
     data = pd.DataFrame(np.ones((10, 2)))
     dsf = dsp.from_pandas(data, chunksize=5)
-    
+
     def foo(sf, x, y):
         return sp.SparseFrame(sf.data * x * y,
                               index=sf.index, columns=sf.columns)
-    
+
     dsf = dsf.map_partitions(foo, dsf._meta, x=(i for i in range(2, 4)), y=2)
     res = dsf.compute().todense()
 
@@ -333,6 +334,52 @@ def test_to_npz(dsf):
     pdt.assert_frame_equal(dense, res)
 
 
+def test_from_delayed(dsf_arange, sf_arange):
+    partitions = dsf_arange.to_delayed()
+    res = dsp.from_delayed(partitions)
+
+    assert isinstance(res, dsp.SparseFrame)
+    assert res.npartitions == dsf_arange.npartitions
+    pdt.assert_index_equal(res.columns, dsf_arange.columns)
+    cmp = res.compute()
+    assert isinstance(cmp, sp.SparseFrame)
+    pdt.assert_frame_equal(cmp.todense(), sf_arange.todense())
+
+
+def test_from_delayed_alter_delayed(dsf_arange, sf_arange):
+    @delayed
+    def foo(sf):
+        return sf[['A', 'B']]
+
+    partitions = dsf_arange.to_delayed()
+    partitions = list(map(foo, partitions))
+    res = dsp.from_delayed(partitions)
+
+    assert isinstance(res, dsp.SparseFrame)
+    assert res.npartitions == dsf_arange.npartitions
+    assert res.columns.tolist() == ['A', 'B']
+    cmp = res.compute()
+    assert isinstance(cmp, sp.SparseFrame)
+    pdt.assert_frame_equal(cmp.todense(), sf_arange[['A', 'B']].todense())
+
+
+def test_from_delayed_meta(dsf_arange, sf_arange):
+    @delayed
+    def foo(sf):
+        return sf[['A', 'B']]
+
+    partitions = dsf_arange.to_delayed()
+    partitions = list(map(foo, partitions))
+    res = dsp.from_delayed(partitions, meta=dsf_arange._meta[['A', 'B']])
+
+    assert isinstance(res, dsp.SparseFrame)
+    assert res.npartitions == dsf_arange.npartitions
+    assert res.columns.tolist() == ['A', 'B']
+    cmp = res.compute()
+    assert isinstance(cmp, sp.SparseFrame)
+    pdt.assert_frame_equal(cmp.todense(), sf_arange[['A', 'B']].todense())
+
+
 def test_assign_column():
     s = pd.Series(np.arange(10))
     ds = dd.from_pandas(s, npartitions=2)
@@ -584,6 +631,29 @@ def test_persist(dsf):
     res = persisted.compute().todense()
 
     pdt.assert_frame_equal(res, correct)
+
+
+@pytest.fixture(scope='session')
+def dsf_arange(sf_arange):
+    return dsp.from_pandas(sf_arange.todense(), chunksize=5)
+
+
+def test_random_split_(dsf_arange, sf_arange):
+    dask.config.set(scheduler='single-threaded')
+    a, b = dsf_arange.random_split(frac=[0.8, 0.2], random_state=1234)
+
+    assert isinstance(a, dsp.SparseFrame)
+    assert isinstance(b, dsp.SparseFrame)
+    aa, bb = a.compute(), b.compute()
+    assert len(aa) == 8
+    assert len(bb) == 2
+    concat = sp.SparseFrame.concat([aa, bb])
+    pdt.assert_frame_equal(concat.todense().sort_index(), sf_arange.todense())
+
+
+def test_random_split_error(dsf_arange):
+    with pytest.raises(ValueError):
+        dsf_arange.random_split(frac=[0.8, 0.3])
 
 
 @pytest.fixture(scope='session')
