@@ -1,14 +1,15 @@
+import datetime as dt
 import os
+from uuid import uuid4
 
 import dask
 import dask.dataframe as dd
-import datetime as dt
 import numpy as np
 import pandas as pd
 import pandas.util.testing as pdt
 import pytest
+from dask import delayed
 from distributed import Client
-from uuid import uuid4
 
 import sparsity as sp
 import sparsity.dask as dsp
@@ -331,6 +332,52 @@ def test_to_npz(dsf):
         res = loaded.compute().todense()
     pdt.assert_frame_equal(dense, res)
 
+
+def test_from_delayed(dsf_arange, sf_arange):
+    partitions = dsf_arange.to_delayed()
+    res = dsp.from_delayed(partitions)
+    
+    assert isinstance(res, dsp.SparseFrame)
+    assert res.npartitions == dsf_arange.npartitions
+    pdt.assert_index_equal(res.columns, dsf_arange.columns)
+    cmp = res.compute()
+    assert isinstance(cmp, sp.SparseFrame)
+    pdt.assert_frame_equal(cmp.todense(), sf_arange.todense())
+
+
+def test_from_delayed_alter_delayed(dsf_arange, sf_arange):
+    @delayed
+    def foo(sf):
+        return sf[['A', 'B']]
+    
+    partitions = dsf_arange.to_delayed()
+    partitions = list(map(foo, partitions))
+    res = dsp.from_delayed(partitions)
+    
+    assert isinstance(res, dsp.SparseFrame)
+    assert res.npartitions == dsf_arange.npartitions
+    assert res.columns.tolist() == ['A', 'B']
+    cmp = res.compute()
+    assert isinstance(cmp, sp.SparseFrame)
+    pdt.assert_frame_equal(cmp.todense(), sf_arange[['A', 'B']].todense())
+
+
+def test_from_delayed_meta(dsf_arange, sf_arange):
+    @delayed
+    def foo(sf):
+        return sf[['A', 'B']]
+    
+    partitions = dsf_arange.to_delayed()
+    partitions = list(map(foo, partitions))
+    res = dsp.from_delayed(partitions, meta=dsf_arange._meta[['A', 'B']])
+    
+    assert isinstance(res, dsp.SparseFrame)
+    assert res.npartitions == dsf_arange.npartitions
+    assert res.columns.tolist() == ['A', 'B']
+    cmp = res.compute()
+    assert isinstance(cmp, sp.SparseFrame)
+    pdt.assert_frame_equal(cmp.todense(), sf_arange[['A', 'B']].todense())
+    
 
 def test_assign_column():
     s = pd.Series(np.arange(10))
