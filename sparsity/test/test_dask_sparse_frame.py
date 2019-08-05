@@ -25,6 +25,7 @@ def dsf():
                                         columns=['A', 'B']),
                            npartitions=3)
 
+
 def test_from_pandas():
     dsf = dsp.from_pandas(pd.DataFrame(np.random.rand(10,2)),
                           npartitions=3)
@@ -588,3 +589,26 @@ def test_persist(dsf):
     res = persisted.compute().todense()
 
     pdt.assert_frame_equal(res, correct)
+
+
+@pytest.fixture(scope='session')
+def dsf_arange(sf_arange):
+    return dsp.from_pandas(sf_arange.todense(), chunksize=5)
+
+
+def test_random_split_(dsf_arange, sf_arange):
+    dask.config.set(scheduler='single-threaded')
+    a, b = dsf_arange.random_split(frac=[0.8, 0.2], random_state=1234)
+    
+    assert isinstance(a, dsp.SparseFrame)
+    assert isinstance(b, dsp.SparseFrame)
+    aa, bb = a.compute(), b.compute()
+    assert len(aa) == 8
+    assert len(bb) == 2
+    concat = sp.SparseFrame.concat([aa, bb])
+    pdt.assert_frame_equal(concat.todense().sort_index(), sf_arange.todense())
+
+
+def test_random_split_error(dsf_arange):
+    with pytest.raises(ValueError):
+        dsf_arange.random_split(frac=[0.8, 0.3])

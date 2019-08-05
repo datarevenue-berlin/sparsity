@@ -234,6 +234,24 @@ class SparseFrame(dask.base.DaskMethodsMixin):
             return repartition_npartitions(self, npartitions)
         raise ValueError('Either divisions or npartitions must be supplied')
 
+    def random_split(self, frac, random_state=None):
+        if not np.allclose(sum(frac), 1):
+            raise ValueError("frac should sum to 1")
+        state_data = random_state_data(self.npartitions, random_state)
+        
+        partitions = self.to_delayed()
+        partitions = [delayed(pd_split)(sf, frac, state)
+                      for sf, state in zip(partitions, state_data)]
+
+        splits = []
+        for i in range(len(frac)):
+            split_delayed = [delayed(itemgetter(i))(sf) for sf in partitions]
+            split = from_delayed(split_delayed, prefix='random-split',
+                                 meta=self._meta)
+            splits.append(split)
+        
+        return splits
+        
     def get_partition(self, n):
         """Get a sparse dask DataFrame/Series representing
            the `nth` partition."""
