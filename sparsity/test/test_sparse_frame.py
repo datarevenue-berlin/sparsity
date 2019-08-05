@@ -1084,3 +1084,11 @@ def test_error_unaligned_indices():
     with pytest.raises(ValueError) as e:
         SparseFrame(data, columns=np.arange(6), index=np.arange(6))
         assert '(5, 5)' in str(e) and '(6, 6)' in str(e)
+
+
+def test_reset_index(sample_frame_labels):
+    res = sample_frame_labels.reset_index(drop=True)
+    correct = pd.RangeIndex(0, len(sample_frame_labels))
+    pdt.assert_index_equal(res.index, correct)
+    pdt.assert_index_equal(res.columns, sample_frame_labels.columns)
+    assert np.all(sample_frame_labels.data.todense() == res.data.todense())

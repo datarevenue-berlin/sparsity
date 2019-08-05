@@ -1045,6 +1045,12 @@ class SparseFrame(object):
 
         return SparseFrame(new_data, **kwargs)
 
+    def reset_index(self, drop=False):
+        if not drop:
+            raise NotImplementedError("drop=False is not supported.")
+        new_idx = _default_index(len(self))
+        return SparseFrame(self.data, index=new_idx, columns=self.columns)
+
     def to_npz(self, filename, block_size=None, storage_options=None):
         """Save to numpy npz format.
 
