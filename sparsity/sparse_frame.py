@@ -1,12 +1,12 @@
 # coding=utf-8
+import functools
 import traceback
 import warnings
 from collections import OrderedDict
+from functools import partial, reduce
 
-import functools
 import numpy as np
 import pandas as pd
-from functools import partial, reduce
 from pandas.api import types
 from pandas.core.common import _default_index
 
@@ -1141,6 +1141,10 @@ def sparse_one_hot(df, column=None, categories=None, dtype='f8',
     for column, column_cat in categories.items():
         if column_cat is False:
             # this column is skipped - we don't ohe it
+            if not np.issubdtype(df.dtypes[column], np.number):
+                raise TypeError(f"Column `{column}` is not of numerical dtype, "
+                                f"but was requested to be included untouched "
+                                f"in a sparse one-hot-encoded frame.")
             cols = [column]
             csr = sparse.csr_matrix(df[[column]].values)
         else:

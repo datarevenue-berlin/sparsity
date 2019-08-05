@@ -1,8 +1,8 @@
 # coding=utf-8
+import datetime as dt
 import os
 from contextlib import contextmanager
 
-import datetime as dt
 import numpy as np
 import pandas as pd
 import pandas.testing as pdt
@@ -613,6 +613,22 @@ def test_csr_one_hot_series_dense_column(sampledata, weekdays, weekdays_abbr):
         == set(weekdays + weekdays_abbr + ['dense'])
     assert np.all(res[weekdays + weekdays_abbr] == correct_without_dense)
     assert (sparse_frame['dense'].todense() == data['dense']).all()
+
+
+def test_csr_one_hot_series_dense_column_non_numeric(sampledata, weekdays,
+                                                     weekdays_abbr):
+    data = sampledata(49, categorical=True)
+    data['dense'] = np.random.choice(list('abc'), len(data))
+
+    categories = {
+        'weekday': None,
+        'weekday_abbr': None,
+        'dense': False,
+    }
+
+    with pytest.raises(TypeError,
+                       match='Column `dense` is not of numerical dtype'):
+        sparse_one_hot(data, categories=categories)
 
 
 def test_npz_io(complex_example):
