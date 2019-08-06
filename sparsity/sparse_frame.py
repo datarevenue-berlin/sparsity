@@ -15,7 +15,7 @@ try:
 except ImportError:
     try:
         # pandas>0.21.0
-        from pandas.core.indexes.base import _ensure_index
+        from pandas.core.indexes.base import _ensure_index as ensure_index
     except ImportError:
         # pandas==0.21.*
         from pandas.indexes.base import _ensure_index as ensure_index
@@ -843,7 +843,7 @@ class SparseFrame(object):
             item = [item]
         if len(item) > 0:
             indexer = self.loc._convert_to_indexer(
-                item, axis=1, raise_missing=True
+                item, axis=1
             )
             return self._take(indexer, axis=1)
         else:
