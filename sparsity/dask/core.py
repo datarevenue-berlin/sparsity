@@ -17,7 +17,7 @@ from dask.dataframe.core import (Index, Scalar, Series, _Frame, _emulate,
 from dask.dataframe.utils import _nonempty_index, make_meta, meta_nonempty
 from dask.delayed import Delayed, delayed
 from dask.optimization import cull
-from dask.utils import derived_from
+from dask.utils import derived_from, random_state_data
 from scipy import sparse
 from toolz import merge, partition_all, remove
 
