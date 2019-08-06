@@ -6,9 +6,8 @@ from contextlib import contextmanager
 import numpy as np
 import pandas as pd
 import pytest
+
 import sparsity
-
-
 # 2017 starts with a sunday
 from sparsity import SparseFrame
 
@@ -133,3 +132,9 @@ def tmpdir(dir=None):
     finally:
         if os.path.exists(dirname):
             shutil.rmtree(dirname, ignore_errors=True)
+
+
+@pytest.fixture(scope='session')
+def sf_arange():
+    return SparseFrame(np.tile(np.arange(1, 11)[:, np.newaxis], (1, 3)),
+                       columns=list('ABC'))
