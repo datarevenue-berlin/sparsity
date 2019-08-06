@@ -1,19 +1,25 @@
 # coding=utf-8
+import functools
 import traceback
 import warnings
 from collections import OrderedDict
+from functools import partial, reduce
 
-import functools
 import numpy as np
 import pandas as pd
-from functools import partial, reduce
 from pandas.api import types
-from pandas.core.common import _default_index
 
 try:
-    from pandas.indexes.base import _ensure_index
+    # pandas>=0.24.0
+    from pandas.core.indexes.base import ensure_index
 except ImportError:
-    from pandas.core.indexes.base import _ensure_index
+    try:
+        # pandas>0.21.0
+        from pandas.core.indexes.base import _ensure_index as ensure_index
+    except ImportError:
+        # pandas==0.21.*
+        from pandas.indexes.base import _ensure_index as ensure_index
+
 from sparsity.io_ import to_npz, read_npz, _just_read_array
 from scipy import sparse
 
@@ -33,6 +39,11 @@ def _append_zero_row(csr):
     )
 
 
+def _default_index(n):
+    from pandas.core.index import RangeIndex
+    return RangeIndex(0, n, name=None)
+
+
 class SparseFrame(object):
     """ Two dimensional, size-mutable, homogenous tabular data structure with
     labeled axes (rows and columns). It adds pandas indexing abilities to a
@@ -42,6 +53,8 @@ class SparseFrame(object):
 
     For a distributed implementation see sparsity.dask.SparseFrame.
     """
+
+    _AXIS_ORDERS = [0, 1]
 
     def __init__(self, data, index=None, columns=None, **kwargs):
         """Init SparseFrame
@@ -81,7 +94,7 @@ class SparseFrame(object):
                              'indices imply {}'
                              .format(data.shape, (len(index), implied_axis_1)))
         else:
-            self._index = _ensure_index(index)
+            self._index = ensure_index(index)
 
         if columns is None:
             self._columns = _default_index(K)
@@ -94,7 +107,7 @@ class SparseFrame(object):
                              'indices imply {}'
                              .format(data.shape, (implied_axis_0, len(columns))))
         else:
-            self._columns = _ensure_index(columns)
+            self._columns = ensure_index(columns)
 
         if not sparse.isspmatrix_csr(data):
             try:
@@ -128,13 +141,13 @@ class SparseFrame(object):
             self.empty = data.empty
             self._init_csr(sparse.csr_matrix(data.values))
             if init_index:
-                self._index = _ensure_index(data.index)
+                self._index = ensure_index(data.index)
             else:
                 warnings.warn("Passed index explicitly while initializing "
                               "from pd.DataFrame. Original DataFrame's index "
                               "will be ignored.", SyntaxWarning)
             if init_columns:
-                self._columns = _ensure_index(data.columns)
+                self._columns = ensure_index(data.columns)
             else:
                 warnings.warn("Passed columns explicitly while initializing "
                               "from pd.DataFrame. Original DataFrame's columns"
@@ -169,14 +182,16 @@ class SparseFrame(object):
         if not self.empty:
             dense = np.asarray(self.data.toarray())
         else:
-            dense = np.empty(shape=(0, len(self.columns)))
+            dense = np.empty(shape=(0, len(self.columns)),
+                             dtype=self.data.dtype)
 
         if self.shape[0] == 1 or self.shape[1] == 1:
             dense = dense.reshape(-1)
 
         if pandas:
             if self.empty:
-                dense = pd.DataFrame(np.empty(shape=self.shape),
+                dense = pd.DataFrame(np.empty(shape=self.shape,
+                                              dtype=self.data.dtype),
                                      columns=self.columns,
                                      index=self._index[:0])
                 if self.data.shape[1] == 1:  # 1 empty column => empty Series
@@ -204,6 +219,9 @@ class SparseFrame(object):
             self._data = _append_zero_row(csr)
         else:
             self._data = csr
+
+    def _get_axis_number(self, axis):
+        return axis
 
     def _get_axis(self, axis):
         """Rudimentary indexing support."""
@@ -806,7 +824,9 @@ class SparseFrame(object):
             #  where it is used with Multiindex
             item = [item]
         if len(item) > 0:
-            indexer = self.loc._convert_to_indexer(item, axis=1)
+            indexer = self.loc._convert_to_indexer(
+                item, axis=1
+            )
             return self._take(indexer, axis=1)
         else:
             data = np.empty(shape=(self.shape[0], 0))
@@ -851,7 +871,7 @@ class SparseFrame(object):
             new_idx = np.asarray(self.loc[:, column].data.todense()).reshape(-1)
 
         if inplace:
-            self._index = _ensure_index(new_idx)
+            self._index = ensure_index(new_idx)
         else:
             return SparseFrame(self.data,
                                index=new_idx,
@@ -916,11 +936,11 @@ class SparseFrame(object):
             if axis == 0:
                 new_mat = new_data.data[indexer, :]
                 new_data = SparseFrame(new_mat, index=index,
-                                       columns=self.columns)
+                                       columns=new_data.columns)
             elif axis == 1:
                 new_mat = new_data.data[:, indexer]
                 new_data = SparseFrame(new_mat, columns=index,
-                                       index=self.index)
+                                       index=new_data.index)
             else:
                 raise ValueError('Only supported axes are 0 and 1.')
 

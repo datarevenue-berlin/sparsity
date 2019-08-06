@@ -40,6 +40,7 @@ def make_meta_sparsity(inp):
         raise NotImplementedError("Can't make meta for type: {}"
                                   .format(str(type(inp))))
 
+
 @meta_nonempty.register(sp.SparseFrame)
 def meta_nonempty_sparsity(x):
     idx = _nonempty_index(x.index)

@@ -37,7 +37,7 @@ def mock_s3_fs(bucket, data=None):
         m.start()
         import boto3
         import s3fs
-        client = boto3.client('s3', region_name='eu-west-1')
+        client = boto3.client('s3', region_name='us-east-1')
         client.create_bucket(Bucket=bucket)
         if data is not None:
             data = data.copy()

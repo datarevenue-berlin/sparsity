@@ -24,6 +24,7 @@ def dsf():
                                         columns=['A', 'B']),
                            npartitions=3)
 
+
 def test_from_pandas():
     dsf = dsp.from_pandas(pd.DataFrame(np.random.rand(10,2)),
                           npartitions=3)

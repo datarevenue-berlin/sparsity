@@ -20,11 +20,12 @@ setup(
     packages=packages,
     cmdclass=versioneer.get_cmdclass(),
     install_requires=[
-        'pandas>=0.21.0,<=0.23.4',
+        'pandas>=0.21.0,<=0.25.0',
         'scipy>0.19.1',
         'numpy>=1.12.0',
         's3fs>=0.1.0',
-        'dask>0.20.0'
+        'dask>=2.1.0',
+        'fsspec>=0.3.3',
     ],
     test_requires=[
         'boto3==1.7.84',
