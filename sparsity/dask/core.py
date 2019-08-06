@@ -398,6 +398,13 @@ class SparseFrame(dask.base.DaskMethodsMixin):
         res.divisions = tuple([None] * ( self.npartitions + 1))
         return res
 
+    def reset_index(self, drop=False):
+        if not drop:
+            raise NotImplementedError("drop=False is not supported.")
+        return self.map_partitions(sp.SparseFrame.reset_index,
+                                   meta=self._meta.reset_index(drop=drop),
+                                   drop=drop)
+
     def rename(self, columns):
         _meta = self._meta.rename(columns=columns)
         return self.map_partitions(sp.SparseFrame.rename, meta=_meta,

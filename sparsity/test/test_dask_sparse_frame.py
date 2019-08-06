@@ -623,6 +623,18 @@ def test_set_index(clickstream):
     pdt.assert_frame_equal(dense, res)
 
 
+def test_reset_index(dsf):
+    res = dsf.reset_index(drop=True)
+    
+    assert res.npartitions == dsf.npartitions
+    for n in range(res.npartitions):
+        part = res.get_partition(n).compute()
+        pdt.assert_index_equal(part.index, pd.RangeIndex(0, len(part)))
+    
+    cmp = res.compute()
+    assert cmp.index.duplicated().any()
+    
+
 def test_persist(dsf):
     correct = dsf.compute().todense()
     client = Client()
