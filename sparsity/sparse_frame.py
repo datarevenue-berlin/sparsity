@@ -1127,7 +1127,7 @@ def _create_group_matrix(group_idx, dtype='f8'):
 
 
 def sparse_one_hot(df, column=None, categories=None, dtype='f8',
-                   index_col=None, order=None, prefixes=False,
+                   index_col=None, order=None, prefixes=False, sep='_',
                    ignore_cat_order_mismatch=False):
     """
     One-hot encode specified columns of a pandas.DataFrame.
@@ -1138,28 +1138,50 @@ def sparse_one_hot(df, column=None, categories=None, dtype='f8',
     if column is not None:
         warnings.warn(
             '`column` argument of sparsity.sparse_frame.sparse_one_hot '
-            'function is deprecated.'
+            'and sparsity.dask.reshape.one_hot_encode functions is deprecated.'
         )
         if order is not None:
             raise ValueError('`order` and `column` arguments cannot be used '
                              'together.')
         categories = {column: categories}
 
+    if categories is None:
+        categories = df.dtypes\
+            .map(str)\
+            .map(lambda x: None if x == 'category' else False)\
+            .to_dict()
+
     if order is not None:
+        assert set(order) == set(categories.keys()), \
+            "`order` argument specifies different set of columns then " \
+            "`categories` argument. \n" \
+            "In `order`: {} \nIn categories: {}"\
+            .format(sorted(order), sorted(categories.keys()))
         categories = OrderedDict([(column, categories[column])
                                   for column in order])
 
     new_cols = []
     csrs = []
     for column, column_cat in categories.items():
-        if isinstance(column_cat, str):
-            column_cat = _just_read_array(column_cat)
-        cols, csr = _one_hot_series_csr(
-            column_cat, dtype, df[column],
-            ignore_cat_order_mismatch=ignore_cat_order_mismatch
-        )
-        if prefixes:
-            cols = list(map(lambda x: '{}_{}'.format(column, x), cols))
+        if column_cat is False:
+            # this column is skipped - we don't ohe it
+            if not np.issubdtype(df.dtypes[column], np.number):
+                raise TypeError(f"Column `{column}` is not of numerical dtype, "
+                                f"but was requested to be included untouched "
+                                f"in a sparse one-hot-encoded frame.")
+            cols = [column]
+            csr = sparse.csr_matrix(df[[column]].values)
+        else:
+            # we normally ohe this column
+            if isinstance(column_cat, str):
+                column_cat = _just_read_array(column_cat)
+            cols, csr = _one_hot_series_csr(
+                column_cat, dtype, df[column],
+                ignore_cat_order_mismatch=ignore_cat_order_mismatch
+            )
+            if prefixes:
+                column_tmpl = ''.join((column, sep, '{}'))
+                cols = list(map(column_tmpl.format, map(str, cols)))
         new_cols.extend(cols)
         csrs.append(csr)
     if len(set(new_cols)) < len(new_cols):
@@ -1184,15 +1206,14 @@ def _one_hot_series_csr(categories, dtype, oh_col,
                                 ignore_cat_order_mismatch)
 
     else:
-        s = oh_col
-        cat = pd.Categorical(s, np.asarray(categories))
+        cat = pd.Categorical(oh_col, np.asarray(categories))
     codes = cat.codes
     n_features = len(cat.categories)
     n_samples = codes.size
     mask = codes != -1
     if np.any(~mask):
         raise ValueError("Unknown categorical features present "
-                         "during transform: %s." % np.unique(s[~mask]))
+                         "during transform: %s." % np.unique(oh_col[~mask]))
     row_indices = np.arange(n_samples, dtype=np.int32)
     col_indices = codes
     data = np.ones(row_indices.size)

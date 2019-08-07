@@ -89,12 +89,14 @@ def testdb():
 
 @pytest.fixture()
 def clickstream():
-    df = pd.DataFrame(dict(
-        page_id=np.random.choice(list('ABCDE'), size=100),
-        other_categorical=np.random.choice(list('FGHIJ'), size=100),
-        id=np.random.choice([1,2,3,4,5,6,7,8,9], size=100)
+    df = pd.DataFrame(
+        dict(
+            page_id=np.random.choice(list('ABCDE'), size=100),
+            other_categorical=np.random.choice(list('FGHIJ'), size=100),
+            id=np.random.choice([1,2,3,4,5,6,7,8,9], size=100)
         ),
-    index=pd.date_range("2016-01-01", periods=100))
+        index=pd.date_range("2016-01-01", periods=100),
+    )
     return df
 
 

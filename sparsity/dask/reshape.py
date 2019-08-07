@@ -1,6 +1,3 @@
-import warnings
-from collections import OrderedDict
-
 import numpy as np
 
 import sparsity as sp
@@ -9,7 +6,7 @@ from sparsity.dask import SparseFrame
 
 
 def one_hot_encode(ddf, column=None, categories=None, index_col=None,
-                   order=None, prefixes=False,
+                   order=None, prefixes=False, sep='_',
                    ignore_cat_order_mismatch=False):
     """
     Sparse one hot encoding of dask.DataFrame.
@@ -22,15 +19,22 @@ def one_hot_encode(ddf, column=None, categories=None, index_col=None,
     ddf: dask.DataFrame
         e.g. the clickstream
     categories: dict
-        Maps ``column name`` -> ``iterable of possible category values``.
-        Can be also ``column name`` -> ``None`` if this column is already
-        of categorical dtype.
-        This argument decides which column(s) will be encoded.
-        See description of `order` and `ignore_cat_order_mismatch`.
+        Maps ``column name`` to specification on how to treat this column.
+        Specification can be:
+        - iterable of possible category values;
+        - ``None`` if this column is already of categorical dtype;
+        - ``False`` if this column should not be one-hot-encoded - it will be
+          included in the result untouched.
+        This argument decides which column(s) will be processed by this
+        function. See description of `order` and `ignore_cat_order_mismatch`.
+        
+        By default, try to ohe-hot-encode all categorical columns and include
+        all the other columns untouched.
     index_col: str | iterable
         which columns to use as index
     order: iterable
         Specify order in which one-hot encoded columns should be aligned.
+        Must have the same elements as keys of ``categories``.
 
         If `order = [col_name1, col_name2]`
         and `categories = {col_name1: ['A', 'B'], col_name2: ['C', 'D']}`,
@@ -45,9 +49,12 @@ def one_hot_encode(ddf, column=None, categories=None, index_col=None,
         so that new columns will be named like:
         [cat11, cat12, cat21, cat22, ...].
 
-        If True, original column name followed by an underscore will be added
+        If True, original column name followed by a separator will be added
         in front of each category name, so that new columns will be named like:
         [col1_cat11, col1_cat12, col2_cat21, col2_cat22, ...].
+        See ``sep`` argument.
+    sep: str
+        Separator used when ``prefixes`` is True.
     column: DEPRECATED
         Kept only for backward compatibility.
     ignore_cat_order_mismatch: bool
@@ -65,36 +72,28 @@ def one_hot_encode(ddf, column=None, categories=None, index_col=None,
     -------
         sparse_one_hot: sparsity.dask.SparseFrame
     """
-    if column is not None:
-        warnings.warn(
-            '`column` argument of sparsity.dask.reshape.one_hot_encode '
-            'function is deprecated.'
-        )
-        if order is not None:
-            raise ValueError('`order` and `column` arguments cannot be used '
-                             'together.')
-        categories = {column: categories}
-
     idx_meta = ddf._meta.reset_index().set_index(index_col).index[:0] \
         if index_col else ddf._meta.index
 
-    if order is not None:
-        categories = OrderedDict([(column, categories[column])
-                                  for column in order])
-
     columns = sparse_one_hot(ddf._meta,
+                             column=column,
                              categories=categories,
                              index_col=index_col,
+                             order=order,
                              prefixes=prefixes,
+                             sep=sep,
                              ignore_cat_order_mismatch=ignore_cat_order_mismatch
                              ).columns
     meta = sp.SparseFrame(np.empty(shape=(0, len(columns))), columns=columns,
                           index=idx_meta)
 
     dsf = ddf.map_partitions(sparse_one_hot,
+                             column=column,
                              categories=categories,
                              index_col=index_col,
+                             order=order,
                              prefixes=prefixes,
+                             sep=sep,
                              ignore_cat_order_mismatch=ignore_cat_order_mismatch,
                              meta=object)
 
