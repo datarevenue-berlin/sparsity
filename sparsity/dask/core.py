@@ -1,3 +1,4 @@
+import warnings
 from itertools import repeat
 from operator import getitem, itemgetter
 from pprint import pformat
@@ -14,10 +15,10 @@ from dask.dataframe.core import (Index, Scalar, Series, _Frame, _emulate,
                                  _extract_meta, _maybe_from_pandas, apply,
                                  check_divisions, funcname, get_parallel_type,
                                  hash_shard, no_default, partial,
-                                 partial_by_order, split_evenly,
+                                 partial_by_order, pd_split, split_evenly,
                                  split_out_on_index)
 from dask.dataframe.utils import _nonempty_index, make_meta, meta_nonempty
-from dask.delayed import Delayed
+from dask.delayed import Delayed, delayed
 from dask.optimization import cull
 from dask.utils import derived_from, random_state_data
 from scipy import sparse
@@ -59,6 +60,38 @@ def finalize(results):
         return results[0]
     results = [r for r in results if not r.empty]
     return sp.SparseFrame.vstack(results)
+
+
+def from_delayed(dfs, meta=None, divisions=None, prefix="from-delayed"):
+    for df in dfs:
+        if not isinstance(df, Delayed):
+            raise TypeError("Expected Delayed object, got %s" % type(df).__name__)
+
+    if meta is None:
+        warnings.warn("`from_delayed` must compute meta. Pass `meta` argument "
+                      "to avoid computation.")
+        meta = delayed(make_meta)(dfs[0]).compute()
+    else:
+        meta = make_meta(meta)
+
+    name = prefix + "-" + tokenize(*dfs)
+    dsk = merge(df.dask for df in dfs)
+    dsk.update(
+        {
+            (name, i): (lambda x: x, df.key)
+            for (i, df) in enumerate(dfs)
+        }
+    )
+    
+    if divisions is None or divisions == "sorted":
+        divs = [None] * (len(dfs) + 1)
+    else:
+        divs = tuple(divisions)
+        if len(divs) != len(dfs) + 1:
+            raise ValueError("divisions should be a tuple of len(dfs) + 1")
+    
+    sf = SparseFrame(dsk, name, meta, divisions=divs)
+    return sf
 
 
 class SparseFrame(dask.base.DaskMethodsMixin):
@@ -234,6 +267,24 @@ class SparseFrame(dask.base.DaskMethodsMixin):
                 .columns.tolist()
             return self[cols]
 
+    def random_split(self, frac, random_state=None):
+        if not np.allclose(sum(frac), 1):
+            raise ValueError("frac should sum to 1")
+        state_data = random_state_data(self.npartitions, random_state)
+        
+        partitions = self.to_delayed()
+        partitions = [delayed(pd_split)(sf, frac, state)
+                      for sf, state in zip(partitions, state_data)]
+
+        splits = []
+        for i in range(len(frac)):
+            split_delayed = [delayed(itemgetter(i))(sf) for sf in partitions]
+            split = from_delayed(split_delayed, prefix='random-split',
+                                 meta=self._meta)
+            splits.append(split)
+        
+        return splits
+        
     def get_partition(self, n):
         """Get a sparse dask DataFrame/Series representing
            the `nth` partition."""
