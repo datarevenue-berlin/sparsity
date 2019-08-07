@@ -1,7 +1,6 @@
 # coding=utf-8
 import datetime as dt
 import os
-
 from contextlib import contextmanager
 
 import numpy as np
@@ -10,9 +9,9 @@ import pandas.testing as pdt
 import pytest
 from moto import mock_s3
 from scipy import sparse
+
 from sparsity import SparseFrame, sparse_one_hot
 from sparsity.io_ import _csr_to_dict
-
 from .conftest import tmpdir
 
 
@@ -1045,3 +1044,10 @@ def test_sample_replace(sf_arange):
     res = sf_arange.sample(n=11, replace=True)
     assert res.shape == (11, 3)
     assert res.todense().duplicated().any()
+
+
+def test_sample_empty_frac():
+    sf = SparseFrame(pd.DataFrame([], columns=list('ABC')))
+    res = sf.sample(frac=0.5)
+    assert res.shape == (0, 3)
+    assert res.empty

@@ -1,6 +1,8 @@
-import versioneer
 from distutils.core import setup
+
 from setuptools import find_packages
+
+import versioneer
 
 packages = find_packages()
 packages.remove('sparsity.test')
@@ -22,7 +24,7 @@ setup(
     install_requires=[
         'pandas>=0.21.0,<=0.23.4',
         'scipy>0.19.1',
-        'numpy>=1.12.0',
+        'numpy>1.16.0',
         's3fs>=0.1.0',
         'dask>0.20.0'
     ],
