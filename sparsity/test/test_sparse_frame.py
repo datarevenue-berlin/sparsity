@@ -1,7 +1,6 @@
 # coding=utf-8
 import datetime as dt
 import os
-
 from contextlib import contextmanager
 
 import numpy as np
@@ -10,9 +9,9 @@ import pandas.testing as pdt
 import pytest
 from moto import mock_s3
 from scipy import sparse
+
 from sparsity import SparseFrame, sparse_one_hot
 from sparsity.io_ import _csr_to_dict
-
 from .conftest import tmpdir
 
 
@@ -488,6 +487,28 @@ def test_csr_one_hot_series_other_order(sampledata, weekdays, weekdays_abbr):
     assert all(sparse_frame.columns == (weekdays_abbr + weekdays))
 
 
+def test_csr_one_hot_series_no_categories(sampledata, weekdays, weekdays_abbr):
+
+    data = sampledata(49, categorical=True).drop('date', axis=1)
+    sparse_frame = sparse_one_hot(data)
+
+    assert set(sparse_frame.columns) \
+        == set(weekdays_abbr) | set(weekdays) | {'id'}
+
+
+def test_csr_one_hot_series_wrong_order(sampledata, weekdays, weekdays_abbr):
+
+    categories = {'weekday': weekdays,
+                  'weekday_abbr': weekdays_abbr}
+
+    with pytest.raises(AssertionError):
+        sparse_one_hot(sampledata(49), categories=categories,
+                       order=['weekday_abbr', 'weekday', 'wat'])
+    with pytest.raises(AssertionError):
+        sparse_one_hot(sampledata(49), categories=categories,
+                       order=['weekday_abbr'])
+
+
 def test_csr_one_hot_series_no_order(sampledata, weekdays, weekdays_abbr):
 
     categories = {'weekday': weekdays,
@@ -513,6 +534,19 @@ def test_csr_one_hot_series_prefixes(sampledata, weekdays, weekdays_abbr):
     assert np.all(res == correct)
     correct_columns = list(map(lambda x: 'weekday_' + x, weekdays)) \
         + list(map(lambda x: 'weekday_abbr_' + x, weekdays_abbr))
+    assert all(sparse_frame.columns == correct_columns)
+
+
+def test_csr_one_hot_series_prefixes_sep(sampledata, weekdays, weekdays_abbr):
+    categories = {'weekday': weekdays,
+                  'weekday_abbr': weekdays_abbr}
+
+    sparse_frame = sparse_one_hot(sampledata(49), categories=categories,
+                                  order=['weekday', 'weekday_abbr'],
+                                  prefixes=True, sep='=')
+
+    correct_columns = list(map(lambda x: 'weekday=' + x, weekdays)) \
+        + list(map(lambda x: 'weekday_abbr=' + x, weekdays_abbr))
     assert all(sparse_frame.columns == correct_columns)
 
 
@@ -557,6 +591,44 @@ def test_csr_one_hot_series_too_little_categories(sampledata):
                   'Thursday', 'Friday']
     with pytest.raises(ValueError):
         sparse_one_hot(sampledata(49), categories={'weekday': categories})
+
+
+def test_csr_one_hot_series_dense_column(sampledata, weekdays, weekdays_abbr):
+    correct_without_dense = np.hstack((np.identity(7) * 7,
+                                       np.identity(7) * 7))
+
+    data = sampledata(49, categorical=True)
+    data['dense'] = np.random.rand(len(data))
+
+    categories = {
+        'weekday': None,
+        'weekday_abbr': None,
+        'dense': False,
+    }
+
+    sparse_frame = sparse_one_hot(data, categories=categories)
+
+    res = sparse_frame.groupby_sum(np.tile(np.arange(7), 7)).todense()
+    assert set(sparse_frame.columns) \
+        == set(weekdays + weekdays_abbr + ['dense'])
+    assert np.all(res[weekdays + weekdays_abbr] == correct_without_dense)
+    assert (sparse_frame['dense'].todense() == data['dense']).all()
+
+
+def test_csr_one_hot_series_dense_column_non_numeric(sampledata, weekdays,
+                                                     weekdays_abbr):
+    data = sampledata(49, categorical=True)
+    data['dense'] = np.random.choice(list('abc'), len(data))
+
+    categories = {
+        'weekday': None,
+        'weekday_abbr': None,
+        'dense': False,
+    }
+
+    with pytest.raises(TypeError,
+                       match='Column `dense` is not of numerical dtype'):
+        sparse_one_hot(data, categories=categories)
 
 
 def test_npz_io(complex_example):
@@ -1012,3 +1084,51 @@ def test_error_unaligned_indices():
     with pytest.raises(ValueError) as e:
         SparseFrame(data, columns=np.arange(6), index=np.arange(6))
         assert '(5, 5)' in str(e) and '(6, 6)' in str(e)
+
+
+def test_reset_index(sample_frame_labels):
+    res = sample_frame_labels.reset_index(drop=True)
+    correct = pd.RangeIndex(0, len(sample_frame_labels))
+    pdt.assert_index_equal(res.index, correct)
+    pdt.assert_index_equal(res.columns, sample_frame_labels.columns)
+    assert np.all(sample_frame_labels.data.todense() == res.data.todense())
+
+
+def test_sample_n(sf_arange):
+    res = sf_arange.sample(n=5)
+    assert res.shape == (5, 3)
+    assert not res.todense().duplicated().any()
+
+
+def test_sample_frac(sf_arange):
+    res = sf_arange.sample(frac=0.5)
+    assert res.shape == (5, 3)
+    assert not res.todense().duplicated().any()
+
+
+def test_sample_axis(sf_arange):
+    res = sf_arange.sample(n=2, axis=1)
+    assert res.shape == (10, 2)
+    assert not res.todense().duplicated().any()
+
+
+def test_sample_errors(sf_arange):
+    with pytest.raises(ValueError):
+        sf_arange.sample(n=5, frac=0.5)
+    with pytest.raises(ValueError):
+        sf_arange.sample()
+    with pytest.raises(NotImplementedError):
+        sf_arange.sample(n=5, weights='asd')
+
+
+def test_sample_replace(sf_arange):
+    res = sf_arange.sample(n=11, replace=True)
+    assert res.shape == (11, 3)
+    assert res.todense().duplicated().any()
+
+
+def test_sample_empty_frac():
+    sf = SparseFrame(pd.DataFrame([], columns=list('ABC')))
+    res = sf.sample(frac=0.5)
+    assert res.shape == (0, 3)
+    assert res.empty
