@@ -1,14 +1,14 @@
+import datetime as dt
 import os
+from uuid import uuid4
 
 import dask
 import dask.dataframe as dd
-import datetime as dt
 import numpy as np
 import pandas as pd
 import pandas.util.testing as pdt
 import pytest
 from distributed import Client
-from uuid import uuid4
 
 import sparsity as sp
 import sparsity.dask as dsp
@@ -43,6 +43,22 @@ def test_map_partitions():
 
     assert isinstance(res, sp.SparseFrame)
     assert res.shape == (10, 2)
+
+
+def test_map_partitions_mappable():
+    data = pd.DataFrame(np.ones((10, 2)))
+    dsf = dsp.from_pandas(data, chunksize=5)
+    
+    def foo(sf, x, y):
+        return sp.SparseFrame(sf.data * x * y,
+                              index=sf.index, columns=sf.columns)
+    
+    dsf = dsf.map_partitions(foo, dsf._meta, x=(i for i in range(2, 4)), y=2)
+    res = dsf.compute().todense()
+
+    assert res.shape == (10, 2)
+    assert (res.iloc[:5, :] == 4).all().all()
+    assert (res.iloc[5:, :] == 6).all().all()
 
 
 def test_todense():
@@ -559,6 +575,18 @@ def test_set_index(clickstream):
     pdt.assert_frame_equal(dense, res)
 
 
+def test_reset_index(dsf):
+    res = dsf.reset_index(drop=True)
+    
+    assert res.npartitions == dsf.npartitions
+    for n in range(res.npartitions):
+        part = res.get_partition(n).compute()
+        pdt.assert_index_equal(part.index, pd.RangeIndex(0, len(part)))
+    
+    cmp = res.compute()
+    assert cmp.index.duplicated().any()
+    
+
 def test_persist(dsf):
     correct = dsf.compute().todense()
     client = Client()
@@ -567,3 +595,50 @@ def test_persist(dsf):
     res = persisted.compute().todense()
 
     pdt.assert_frame_equal(res, correct)
+
+
+@pytest.fixture(scope='session')
+def dsf_arange(sf_arange):
+    return dsp.from_pandas(sf_arange.todense(), chunksize=5)
+
+
+def test_sample(dsf_arange):
+    res = dsf_arange.sample(frac=0.2)
+    assert res.todense().map_partitions(len).compute().tolist() == [1, 1]
+    cmp = res.compute()
+    assert cmp.shape == (2, 3)
+    assert not cmp.todense().duplicated().any()
+
+
+def test_sample_axis(dsf_arange):
+    res = dsf_arange.sample(n=2, axis=1)
+    cmp = res.compute()
+    assert cmp.shape == (10, 2)
+
+
+def test_sample_errors(dsf_arange):
+    with pytest.raises(NotImplementedError):
+        dsf_arange.sample(n=5)
+    with pytest.raises(ValueError):
+        dsf_arange.sample(n=5, frac=0.5, axis=1)
+    with pytest.raises(ValueError):
+        dsf_arange.sample()
+    with pytest.raises(NotImplementedError):
+        dsf_arange.sample(n=5, random_state=123)
+    with pytest.raises(NotImplementedError):
+        dsf_arange.sample(n=5, weights='asd')
+
+
+def test_sample_replace(dsf_arange):
+    res = dsf_arange.sample(frac=1.2, replace=True)
+    cmp = res.compute()
+    assert cmp.shape == (12, 3)
+    assert cmp.todense().duplicated().any()
+
+
+def test_sample_compute_twice(dsf_arange):
+    for _ in range(5):  # increase chance of failing
+        res = dsf_arange.sample(frac=0.2, replace=False)
+        cmp1 = res.compute().todense()
+        cmp2 = res.compute().todense()
+        pdt.assert_frame_equal(cmp1, cmp2)

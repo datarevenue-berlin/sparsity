@@ -1,5 +1,7 @@
+from itertools import repeat
 from operator import getitem, itemgetter
 from pprint import pformat
+from types import GeneratorType
 
 import dask
 import dask.dataframe as dd
@@ -17,7 +19,7 @@ from dask.dataframe.core import (Index, Scalar, Series, _Frame, _emulate,
 from dask.dataframe.utils import _nonempty_index, make_meta, meta_nonempty
 from dask.delayed import Delayed
 from dask.optimization import cull
-from dask.utils import derived_from
+from dask.utils import derived_from, random_state_data
 from scipy import sparse
 from toolz import merge, partition_all, remove
 
@@ -203,6 +205,34 @@ class SparseFrame(dask.base.DaskMethodsMixin):
         elif npartitions is not None:
             return repartition_npartitions(self, npartitions)
         raise ValueError('Either divisions or npartitions must be supplied')
+    
+    def sample(self, n=None, frac=None, replace=False, weights=None,
+               random_state=None, axis=None):
+        axis = axis or 0
+        if axis not in [0, 1]:
+            raise ValueError("Axis must be either 0 or 1.")
+        if axis == 0 and n is not None:
+            raise NotImplementedError("Only `frac` can be used to sample rows"
+                                      " from Dask SparseFrame, not `n`.")
+        if (n is None) == (frac is None):
+            raise ValueError("Please specify either `n` or `frac`.")
+        if weights is not None:
+            raise NotImplementedError("`weights` argument is not supported.")
+
+        if random_state is None:
+            random_state = np.random.RandomState()
+        state_data = random_state_data(self.npartitions, random_state)
+        state_data = (x for x in state_data)
+        
+        if axis == 0:
+            return self.map_partitions(sp.SparseFrame.sample, self._meta,
+                                       frac=frac, replace=replace, axis=0,
+                                       random_state=state_data)
+        if axis == 1:
+            cols = self._meta\
+                .sample(n=n, frac=frac, replace=replace, axis=1)\
+                .columns.tolist()
+            return self[cols]
 
     def get_partition(self, n):
         """Get a sparse dask DataFrame/Series representing
@@ -318,6 +348,13 @@ class SparseFrame(dask.base.DaskMethodsMixin):
                                   column=column, idx=idx, level=level)
         res.divisions = tuple([None] * ( self.npartitions + 1))
         return res
+
+    def reset_index(self, drop=False):
+        if not drop:
+            raise NotImplementedError("drop=False is not supported.")
+        return self.map_partitions(sp.SparseFrame.reset_index,
+                                   meta=self._meta.reset_index(drop=drop),
+                                   drop=drop)
 
     def rename(self, columns):
         _meta = self._meta.rename(columns=columns)
@@ -661,15 +698,40 @@ def elemwise(op, *args, **kwargs):
     return SparseFrame(dsk, _name, meta, divisions)
 
 
+def _maybe_repeat(x):
+    if isinstance(x, GeneratorType):
+        return x
+    return repeat(x)
+
+
+def _make_mappable(d):
+    """Convert each value to a generator, unless it already is one."""
+    res = dict(zip(
+        d.keys(),
+        map(_maybe_repeat, d.values())
+    ))
+    return res
+
+
 def map_partitions(func, ddf, meta, name=None, **kwargs):
+    """Map a function onto partitions.
+    
+    If you want to pass different values to different partitions,
+    pass a generator in kwargs. Subsequent values will be passed to
+    the function while mapping onto subsequent partitions.
+    """
+    kwargs = _make_mappable(kwargs)
+    
     dsk = {}
     name = name or func.__name__
     token = tokenize(func, meta, **kwargs)
     name = '{0}-{1}'.format(name, token)
 
     for i in range(ddf.npartitions):
+        # for each partition take next value
+        kw = {k: next(v) for k, v in kwargs.items()}
         value = (ddf._name, i)
-        dsk[(name, i)] = (apply_and_enforce, func, value, kwargs, meta)
+        dsk[(name, i)] = (apply_and_enforce, func, value, kw, meta)
 
     return SparseFrame(merge(dsk, ddf.dask), name, meta, ddf.divisions)
 
@@ -677,7 +739,7 @@ def map_partitions(func, ddf, meta, name=None, **kwargs):
 def apply_and_enforce(func, arg, kwargs, meta):
     sf = func(arg, **kwargs)
     if isinstance(sf, sp.SparseFrame):
-        if len(sf.data.data) == 0:
+        if sf.empty:
             assert meta.empty, \
                 "Computed empty result but received non-empty meta"
             assert isinstance(meta, sp.SparseFrame), \
