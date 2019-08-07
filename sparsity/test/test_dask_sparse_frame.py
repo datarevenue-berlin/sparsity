@@ -1,14 +1,14 @@
+import datetime as dt
 import os
+from uuid import uuid4
 
 import dask
 import dask.dataframe as dd
-import datetime as dt
 import numpy as np
 import pandas as pd
 import pandas.util.testing as pdt
 import pytest
 from distributed import Client
-from uuid import uuid4
 
 import sparsity as sp
 import sparsity.dask as dsp
@@ -532,6 +532,18 @@ def test_set_index(clickstream):
 
     pdt.assert_frame_equal(dense, res)
 
+
+def test_reset_index(dsf):
+    res = dsf.reset_index(drop=True)
+    
+    assert res.npartitions == dsf.npartitions
+    for n in range(res.npartitions):
+        part = res.get_partition(n).compute()
+        pdt.assert_index_equal(part.index, pd.RangeIndex(0, len(part)))
+    
+    cmp = res.compute()
+    assert cmp.index.duplicated().any()
+    
 
 def test_persist(dsf):
     correct = dsf.compute().todense()
