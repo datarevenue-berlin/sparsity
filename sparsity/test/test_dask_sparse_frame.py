@@ -26,6 +26,11 @@ def dsf():
                            npartitions=3)
 
 
+@pytest.fixture(scope='session')
+def dsf_arange(sf_arange):
+    return dsp.from_pandas(sf_arange.todense(), chunksize=5)
+
+
 def test_from_pandas():
     dsf = dsp.from_pandas(pd.DataFrame(np.random.rand(10,2)),
                           npartitions=3)
@@ -589,11 +594,6 @@ def test_persist(dsf):
     res = persisted.compute().todense()
 
     pdt.assert_frame_equal(res, correct)
-
-
-@pytest.fixture(scope='session')
-def dsf_arange(sf_arange):
-    return dsp.from_pandas(sf_arange.todense(), chunksize=5)
 
 
 def test_random_split_(dsf_arange, sf_arange):
