@@ -1,3 +1,4 @@
+import warnings
 from operator import getitem, itemgetter
 from pprint import pformat
 
@@ -65,6 +66,8 @@ def from_delayed(dfs, meta=None, divisions=None, prefix="from-delayed"):
             raise TypeError("Expected Delayed object, got %s" % type(df).__name__)
 
     if meta is None:
+        warnings.warn("`from_delayed` must compute meta. Pass `meta` argument "
+                      "to avoid computation.")
         meta = delayed(make_meta)(dfs[0]).compute()
     else:
         meta = make_meta(meta)

@@ -299,7 +299,8 @@ def test_to_npz(dsf):
 
 def test_from_delayed(dsf_arange, sf_arange):
     partitions = dsf_arange.to_delayed()
-    res = dsp.from_delayed(partitions)
+    with pytest.warns(UserWarning):
+        res = dsp.from_delayed(partitions)
     
     assert isinstance(res, dsp.SparseFrame)
     assert res.npartitions == dsf_arange.npartitions
