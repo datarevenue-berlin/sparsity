@@ -6,9 +6,8 @@ from contextlib import contextmanager
 import numpy as np
 import pandas as pd
 import pytest
+
 import sparsity
-
-
 # 2017 starts with a sunday
 from sparsity import SparseFrame
 
@@ -40,6 +39,7 @@ def sample_frame_labels():
                        columns=list('ABCDE'),
                        index=list('VWXYZ'))
 
+
 @pytest.fixture()
 def weekdays():
     return ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday',
@@ -70,6 +70,7 @@ def sf_midx():
     sf = SparseFrame(np.identity(5), index=midx, columns=cols)
     return sf
 
+
 @pytest.fixture()
 def sf_midx_int():
     midx = pd.MultiIndex.from_arrays(
@@ -79,6 +80,7 @@ def sf_midx_int():
     cols = list('ABCDE')
     sf = SparseFrame(np.identity(5), index=midx, columns=cols)
     return sf
+
 
 @pytest.fixture()
 def testdb():
