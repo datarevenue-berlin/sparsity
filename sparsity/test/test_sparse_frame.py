@@ -1,8 +1,8 @@
 # coding=utf-8
-import datetime as dt
 import os
 from contextlib import contextmanager
 
+import datetime as dt
 import numpy as np
 import pandas as pd
 import pandas.testing as pdt
@@ -589,7 +589,7 @@ def test_csr_one_hot_series_too_much_categories(sampledata):
 def test_csr_one_hot_series_too_little_categories(sampledata):
     categories = ['Sunday', 'Monday', 'Tuesday', 'Wednesday',
                   'Thursday', 'Friday']
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match='column weekday: '):
         sparse_one_hot(sampledata(49), categories={'weekday': categories})
 
 
