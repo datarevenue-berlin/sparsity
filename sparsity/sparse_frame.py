@@ -1,12 +1,12 @@
 # coding=utf-8
-import functools
 import traceback
 import warnings
 from collections import OrderedDict
-from functools import partial, reduce
 
+import functools
 import numpy as np
 import pandas as pd
+from functools import partial, reduce
 from pandas.api import types
 from pandas.core.common import _default_index
 
@@ -1212,8 +1212,10 @@ def _one_hot_series_csr(categories, dtype, oh_col,
     n_samples = codes.size
     mask = codes != -1
     if np.any(~mask):
-        raise ValueError("Unknown categorical features present "
-                         "during transform: %s." % np.unique(oh_col[~mask]))
+        raise ValueError(
+            "Unknown categorical features present while transforming column "
+            "{}: {}.".format(oh_col.name, np.unique(oh_col[~mask]))
+        )
     row_indices = np.arange(n_samples, dtype=np.int32)
     col_indices = codes
     data = np.ones(row_indices.size)
